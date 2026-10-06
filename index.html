@@ -75,6 +75,10 @@ table.et th:focus,table.et td:focus{outline:2px solid var(--acc);outline-offset:
 .el li:focus{outline:2px solid var(--acc);outline-offset:1px;border-radius:2px}
 .al-center .txt{text-align:center}.al-right .txt{text-align:right}
 button.danger{color:#c0392b;border-color:#c0392b}
+.tg{font-weight:600;white-space:nowrap}
+#pdfPane.cl .pdet,#edPane.cl .edet{display:none}
+#pdfPane.cl #view{max-height:calc(100vh - var(--hh,60px) - 110px)}
+#pNav{margin-top:0}
 </style>
 </head>
 <body>
@@ -91,10 +95,14 @@ button.danger{color:#c0392b;border-color:#c0392b}
 </header>
 <main>
 <section class="panel" id="pdfPane">
-  <div class="row">
+  <div class="row" id="pNav">
     <button id="pPrev" title="Oldingi sahifa (←)">◀</button>
     <input type="number" id="pNo" min="1" value="1" style="width:64px"> <span id="pTot">/ 0</span>
     <button id="pNext" title="Keyingi sahifa (→)">▶</button>
+    <button id="tgPdf" class="tg" aria-expanded="true" title="PDF sozlamalarini yig'ish / ochish">▾ Sozlamalar</button>
+  </div>
+  <div class="pdet">
+  <div class="row">
     <button id="zOut" title="Kichraytirish (−)">−</button><span id="zLbl">140%</span><button id="zIn" title="Kattalashtirish (+)">＋</button><button id="zFit" title="Kenglikka moslash (0)">↔</button>
     <button id="bPage">Sahifani qo'sh</button>
     <button id="bFonts" title="Sahifadagi shriftlar: qalin/kursiv aniqlanishini ko'rish va to'g'rilash">🔠 Shriftlar</button>
@@ -111,12 +119,13 @@ button.danger{color:#c0392b;border-color:#c0392b}
     <label><input type="checkbox" id="cMerge" checked> Uzilgan abzasni ulash</label>
     <label>Abzas ajratish <select id="sSens"><option value="0">odatiy</option><option value="1">ko'proq ajrat</option><option value="2">kamroq ajrat</option></select></label>
   </div>
+  </div>
   <div id="viewWrap">
     <button class="edge l" id="eL" title="Oldingi sahifa (←)" disabled>‹</button>
     <div id="view"><div id="pg"><canvas id="cv"></canvas><div id="ov"></div></div></div>
     <button class="edge r" id="eR" title="Keyingi sahifa (→)" disabled>›</button>
   </div>
-  <p class="hint">PDF sahifasida sichqoncha bilan to'rtburchak chizing — ichidagi matn abzaslarga ajratilib, bold/italic bilan o'ng tomondagi muharrirga tushadi. Oraliq tugmasi butun sahifalarni birdan qo'shadi.<br>
+  <p class="hint pdet">PDF sahifasida sichqoncha bilan to'rtburchak chizing — ichidagi matn abzaslarga ajratilib, bold/italic bilan o'ng tomondagi muharrirga tushadi. Oraliq tugmasi butun sahifalarni birdan qo'shadi.<br>
   <b>Tugmalar:</b> <kbd>←</kbd>/<kbd>→</kbd> yoki <kbd>PageUp</kbd>/<kbd>PageDown</kbd> — sahifa, <kbd>Home</kbd>/<kbd>End</kbd> — birinchi/oxirgi, <kbd>+</kbd>/<kbd>−</kbd> — masshtab, <kbd>0</kbd> — kenglikka moslash. Matn yozayotganda: <kbd>Alt</kbd>+<kbd>PageDown</kbd>/<kbd>PageUp</kbd> yoki <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>.</p>
 </section>
 
@@ -125,22 +134,10 @@ button.danger{color:#c0392b;border-color:#c0392b}
     <div class="row">
       <button id="tabEd" class="pri">✎ Muharrir</button><button id="tabJs">{ } JSON ko'rish</button>
       <select id="partSel" style="max-width:230px"></select>
-      <button id="bNewPart">＋ Bob</button><button id="bDelPart">🗑 Bob</button><button id="bClear" class="danger" title="Faqat joriy section ichidagi elementlarni o'chiradi">🧹 Section tozalash</button><button id="bClearAll" class="danger" title="Barcha bob, chapter, section va elementlarni o'chiradi">🗑 Butun kitobni tozalash</button>
-      <label>part <input type="text" id="fPart" style="width:130px" placeholder="Chapter One"></label>
-      <label>subtitle <input type="text" id="fSub" style="width:200px" placeholder="1. Maximize Minimal Potential"></label>
+      <label>Chapter <select id="chSel" style="max-width:190px"></select></label>
+      <label>Section <select id="secSel" style="max-width:220px"></select></label>
       <span class="hint" id="cnt"></span>
-    </div>
-    <div class="row" id="secRow">
-      <label>Chapter <select id="chSel" style="max-width:190px"></select></label><button id="bNewCh" title="Joriy chapterdan keyin yangi chapter">＋ Chapter</button><button id="bDelCh" title="Joriy chapterni o'chirish">🗑</button>
-      <label>Section <select id="secSel" style="max-width:220px"></select></label><button id="bNewSec" title="Joriy section'dan keyin yangi section qo'shish">＋ Section</button><button id="bSecUp" title="Section'ni yuqoriga">↑</button><button id="bSecDn" title="Section'ni pastga">↓</button><button id="bDelSec" title="Joriy section'ni o'chirish">🗑</button>
-    </div>
-    <div class="row" id="metaRow">
-      <label>volume <input type="text" id="fVol" style="width:150px"></label>
-      <label>chapter <input type="text" id="fChap" style="width:130px"></label>
-      <label>section title <input type="text" id="fSecT" style="width:200px"></label>
-      <label>section subtitle <input type="text" id="fSecS" style="width:150px"></label>
-      <button id="bFillAll" class="pri" title="Barcha bob, chapter va section'larda bo'sh volume/chapter/title/subtitle maydonlarini to'ldiradi">✨ Hammasini to'ldirish</button>
-      <span class="hint">Bo'sh qoldirsangiz part/subtitle'dan avtomatik olinadi (kulrang yozuv).</span>
+      <button id="tgEd" class="tg" aria-expanded="true" title="Qo'shimcha sozlamalarni yig'ish / ochish" style="margin-left:auto">▾ Sozlamalar</button>
     </div>
     <div class="row tb edTools">
       <button data-cmd="bold"><b>B</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="underline" title="Tagiga chizish (Ctrl+U)"><u>U</u></button><button data-cmd="strikeThrough" title="O'rtasiga chizish (Ctrl+Shift+X)"><s>S</s></button>
@@ -148,7 +145,6 @@ button.danger{color:#c0392b;border-color:#c0392b}
       <span class="szg"><label>Razmer <input type="number" id="fsz" list="fszl" min="8" max="96" step="1" value="15" style="width:62px" title="Belgilangan matn razmeri (Enter — qo'llash)"></label>
         <datalist id="fszl"><option>10</option><option>12</option><option>14</option><option>15</option><option>16</option><option>18</option><option>20</option><option>24</option><option>28</option><option>32</option></datalist>
         <button id="szApply" title="Razmerni qo'llash">✓</button><button id="szDec" title="Kichraytirish (Ctrl+Shift+,)">A−</button><button id="szInc" title="Kattalashtirish (Ctrl+Shift+.)">A＋</button><button id="szReset" title="Asl razmerga qaytarish">Asl</button></span>
-      <button data-add="p">＋ Abzas</button><button data-add="img">＋ Rasm</button><button data-add="sep">＋ Σ</button><button data-add="evo">＋ Evolution</button><button data-add="h">＋ Sarlavha</button><button data-add="table">▦ Jadval</button><button data-add="ul">• Ro'yxat</button><button data-add="ol">1. Ro'yxat</button>
     </div>
     <div class="row" id="jsTools" hidden>
       <select id="jsScope"><option value="cur">Joriy bob</option><option value="all">Hamma boblar</option></select>
@@ -156,8 +152,21 @@ button.danger{color:#c0392b;border-color:#c0392b}
       <button id="jsRefresh">↻ Yangilash</button><button id="jsCopy">⧉ Nusxalash</button>
       <span class="hint">▾/▸ — yig'ish/yoyish. Qidirish: Ctrl+F</span>
     </div>
+    <div class="edet">
+      <div class="row"><button id="bNewPart">＋ Bob</button><button id="bDelPart">🗑 Bob</button><button id="bClear" class="danger" title="Faqat joriy section ichidagi elementlarni o'chiradi">🧹 Section tozalash</button><button id="bClearAll" class="danger" title="Barcha bob, chapter, section va elementlarni o'chiradi">🗑 Butun kitobni tozalash</button><label>part <input type="text" id="fPart" style="width:130px" placeholder="Chapter One"></label><label>subtitle <input type="text" id="fSub" style="width:200px" placeholder="1. Maximize Minimal Potential"></label></div>
+      <div class="row" id="secRow"><button id="bNewCh" title="Joriy chapterdan keyin yangi chapter">＋ Chapter</button><button id="bDelCh" title="Joriy chapterni o'chirish">🗑</button><button id="bNewSec" title="Joriy section'dan keyin yangi section qo'shish">＋ Section</button><button id="bSecUp" title="Section'ni yuqoriga">↑</button><button id="bSecDn" title="Section'ni pastga">↓</button><button id="bDelSec" title="Joriy section'ni o'chirish">🗑</button></div>
+      <div class="row" id="metaRow">
+      <label>volume <input type="text" id="fVol" style="width:150px"></label>
+      <label>chapter <input type="text" id="fChap" style="width:130px"></label>
+      <label>section title <input type="text" id="fSecT" style="width:200px"></label>
+      <label>section subtitle <input type="text" id="fSecS" style="width:150px"></label>
+      <button id="bFillAll" class="pri" title="Barcha bob, chapter va section'larda bo'sh volume/chapter/title/subtitle maydonlarini to'ldiradi">✨ Hammasini to'ldirish</button>
+      <span class="hint">Bo'sh qoldirsangiz part/subtitle'dan avtomatik olinadi (kulrang yozuv).</span>
+    </div>
+      <div class="row tb edTools"><button data-add="p">＋ Abzas</button><button data-add="img">＋ Rasm</button><button data-add="sep">＋ Σ</button><button data-add="evo">＋ Evolution</button><button data-add="h">＋ Sarlavha</button><button data-add="table">▦ Jadval</button><button data-add="ul">• Ro'yxat</button><button data-add="ol">1. Ro'yxat</button></div>
+    </div>
   </div>
-  <p class="hint edTools">Enter — abzasni kursor joyidan ikkiga bo'ladi. Abzas boshida Backspace — oldingisiga qo'shadi. Belgilangan matnga B / I / U / <s>S</s> (o'rtasiga chizish) va razmer (A− / A＋ yoki raqam + Enter) qo'llanadi. Matn abzasidagi ⯇/▭/⯈ tugmasi matnni chap/markaz/o'ngga tekislaydi. Bobning "part/subtitle" nomidan volume, chapter, section title/subtitle avtomatik to'ldiriladi — xohlasangiz yuqoridagi maydonlarda o'zgartiring. Bir chapter ichida bir nechta section ochish mumkin (＋ Section).</p>
+  <p class="hint edTools edet">Enter — abzasni kursor joyidan ikkiga bo'ladi. Abzas boshida Backspace — oldingisiga qo'shadi. Belgilangan matnga B / I / U / <s>S</s> (o'rtasiga chizish) va razmer (A− / A＋ yoki raqam + Enter) qo'llanadi. Matn abzasidagi ⯇/▭/⯈ tugmasi matnni chap/markaz/o'ngga tekislaydi. Bobning "part/subtitle" nomidan volume, chapter, section title/subtitle avtomatik to'ldiriladi — xohlasangiz yuqoridagi maydonlarda o'zgartiring. Bir chapter ichida bir nechta section ochish mumkin (＋ Section).</p>
   <div id="list"></div>
   <div id="jsonView" hidden></div>
 </section>
@@ -630,6 +639,15 @@ const hdr=document.querySelector('header'),setHH=()=>document.documentElement.st
 setHH();new ResizeObserver(setHH).observe(hdr);
 
 render();
+
+/* ochiladigan/yig'iladigan sozlamalar (holati saqlanadi) */
+function mkFold(btn,pane,key){const b=$(btn),p=$(pane);
+  const set=cl=>{p.classList.toggle('cl',cl);b.textContent=(cl?'▸':'▾')+' Sozlamalar';b.setAttribute('aria-expanded',String(!cl));
+    try{localStorage.setItem(key,cl?'1':'0')}catch(e){}
+    if(window.setHH)setHH();};
+  let st=false;try{st=localStorage.getItem(key)==='1'}catch(e){}
+  set(st);b.onclick=()=>set(!p.classList.contains('cl'))}
+mkFold('tgPdf','pdfPane','pdf-kitob-fold-pdf');mkFold('tgEd','edPane','pdf-kitob-fold-ed');
 </script>
 </body>
 </html>
