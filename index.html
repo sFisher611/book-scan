@@ -20,8 +20,14 @@ button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
 :focus-visible{outline:2px solid var(--acc);outline-offset:1px}
 label{display:inline-flex;gap:4px;align-items:center;color:var(--mut);font-size:13px}
 #msg{color:var(--ok);font-weight:600;margin-left:6px}
-main{display:grid;grid-template-columns:minmax(320px,44%) 1fr;gap:14px;padding:14px;align-items:start}
-@media(max-width:900px){main{grid-template-columns:1fr}}
+main{display:grid;grid-template-columns:var(--pw,44%) 12px minmax(0,1fr);gap:0;padding:14px;align-items:start}
+#pdfPane{min-width:0}
+#split{align-self:stretch;cursor:col-resize;touch-action:none;position:relative;user-select:none}
+#split::before{content:'';position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;border-radius:2px;background:var(--ln);transition:background .15s}
+#split::after{content:'⋮';position:sticky;top:50vh;display:block;text-align:center;color:var(--mut);font-size:18px;line-height:1;margin-top:40px}
+#split:hover::before,#split.drag::before{background:var(--acc)}
+body.dragging{cursor:col-resize;user-select:none}body.dragging #ov{pointer-events:none}
+@media(max-width:900px){main{grid-template-columns:1fr;gap:14px}#split{display:none}}
 .panel{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:10px}
 #pdfPane{position:sticky;top:calc(var(--hh,60px) + 10px)}
 [hidden]{display:none!important}
@@ -126,8 +132,9 @@ button.danger{color:#c0392b;border-color:#c0392b}
     <button class="edge r" id="eR" title="Keyingi sahifa (→)" disabled>›</button>
   </div>
   <p class="hint pdet">PDF sahifasida sichqoncha bilan to'rtburchak chizing — ichidagi matn abzaslarga ajratilib, bold/italic bilan o'ng tomondagi muharrirga tushadi. Oraliq tugmasi butun sahifalarni birdan qo'shadi.<br>
-  <b>Tugmalar:</b> <kbd>←</kbd>/<kbd>→</kbd> yoki <kbd>PageUp</kbd>/<kbd>PageDown</kbd> — sahifa, <kbd>Home</kbd>/<kbd>End</kbd> — birinchi/oxirgi, <kbd>+</kbd>/<kbd>−</kbd> — masshtab, <kbd>0</kbd> — kenglikka moslash. Matn yozayotganda: <kbd>Alt</kbd>+<kbd>PageDown</kbd>/<kbd>PageUp</kbd> yoki <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>.</p>
+  <b>Tugmalar:</b> <kbd>←</kbd>/<kbd>→</kbd> yoki <kbd>PageUp</kbd>/<kbd>PageDown</kbd> — sahifa, <kbd>Home</kbd>/<kbd>End</kbd> — birinchi/oxirgi, <kbd>+</kbd>/<kbd>−</kbd> — masshtab, <kbd>0</kbd> — kenglikka moslash. <kbd>Ctrl</kbd>+g'ildirak — masshtab. Panellar orasidagi ⋮ chiziqni sichqoncha bilan siljitib, PDF oynasini kengaytirish/toraytirish mumkin (ikki marta bosish — asl holat). Matn yozayotganda: <kbd>Alt</kbd>+<kbd>PageDown</kbd>/<kbd>PageUp</kbd> yoki <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>.</p>
 </section>
+<div id="split" role="separator" aria-orientation="vertical" title="Sichqoncha bilan suring: PDF oynasini kengaytirish / toraytirish (ikki marta bosish — asl holat)"></div>
 
 <section class="panel" id="edPane">
   <div id="edBar">
@@ -516,6 +523,7 @@ async function showPage(){if(!pdf)return;const id=++renderId;
   try{await task.promise}catch(e){}if(rtask===task)rtask=null}
 const go=n=>{if(!pdf)return;const m=Math.max(1,Math.min(pdf.numPages,n));if(m===pageNo){$('pNo').value=pageNo;return}
   pageNo=m;$('view').scrollTop=0;showPage()};
+let fitMode=false;
 const setScale=v=>{scale=Math.round(Math.max(.4,Math.min(4,v))*100)/100;showPage()};
 async function fitWidth(){if(!pdf)return;const page=await pdf.getPage(pageNo);
   setScale(($('view').clientWidth-8)/page.getViewport({scale:1}).width)}
@@ -527,7 +535,7 @@ $('fPdf').onchange=async e=>{const f=e.target.files[0];if(!f)return;
 $('pPrev').onclick=()=>go(pageNo-1);$('pNext').onclick=()=>go(pageNo+1);
 $('eL').onclick=()=>go(pageNo-1);$('eR').onclick=()=>go(pageNo+1);
 $('pNo').onchange=e=>{go(+e.target.value);e.target.blur()};
-$('zIn').onclick=()=>setScale(scale+.2);$('zOut').onclick=()=>setScale(scale-.2);$('zFit').onclick=fitWidth;
+$('zIn').onclick=()=>{fitMode=false;setScale(scale+.2)};$('zOut').onclick=()=>{fitMode=false;setScale(scale-.2)};$('zFit').onclick=()=>{fitMode=true;fitWidth()};
 $('bPage').onclick=()=>addPages(pageNo,pageNo);
 $('bRange').onclick=()=>addPages(+$('rA').value,+$('rB').value);
 $('bRegion').onclick=()=>lastRect?addRegion(lastRect):msg('Avval PDFda maydon belgilang');
@@ -648,6 +656,25 @@ function mkFold(btn,pane,key){const b=$(btn),p=$(pane);
   let st=false;try{st=localStorage.getItem(key)==='1'}catch(e){}
   set(st);b.onclick=()=>set(!p.classList.contains('cl'))}
 mkFold('tgPdf','pdfPane','pdf-kitob-fold-pdf');mkFold('tgEd','edPane','pdf-kitob-fold-ed');
+
+/* PDF oynasi kengligini sichqoncha bilan o'zgartirish (ajratgich) */
+(function(){const sp=$('split'),mn=document.querySelector('main'),PW='pdf-kitob-pw';
+  const lim=px=>Math.max(280,Math.min(px,mn.clientWidth-28-320));
+  const setW=px=>mn.style.setProperty('--pw',lim(px)+'px');
+  try{const v=+localStorage.getItem(PW);if(v)setW(v)}catch(e){}
+  let sx=0,sw=0;
+  sp.onpointerdown=e=>{sx=e.clientX;sw=$('pdfPane').getBoundingClientRect().width;sp.setPointerCapture(e.pointerId);sp.classList.add('drag');document.body.classList.add('dragging');e.preventDefault()};
+  sp.onpointermove=e=>{if(!sp.hasPointerCapture(e.pointerId))return;setW(sw+e.clientX-sx)};
+  const end=e=>{if(!sp.classList.contains('drag'))return;sp.classList.remove('drag');document.body.classList.remove('dragging');
+    try{localStorage.setItem(PW,String(Math.round($('pdfPane').getBoundingClientRect().width)))}catch(_){}
+    if(fitMode)fitWidth()};
+  sp.onpointerup=end;sp.onpointercancel=end;
+  sp.ondblclick=()=>{mn.style.removeProperty('--pw');try{localStorage.removeItem(PW)}catch(e){}if(fitMode)fitWidth()};
+  addEventListener('resize',()=>{if(mn.style.getPropertyValue('--pw'))setW(parseFloat(mn.style.getPropertyValue('--pw')))});
+})();
+/* Ctrl + g'ildirak — PDF masshtabi */
+$('view').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)||!pdf)return;e.preventDefault();fitMode=false;
+  setScale(scale*(e.deltaY<0?1.1:1/1.1))},{passive:false});
 </script>
 </body>
 </html>
