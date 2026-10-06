@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PDF → Kitob JSON</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>
+:root{--bg:#f3f1ec;--pn:#fff;--ink:#1d1f24;--mut:#6b6f78;--ln:#d9d5cb;--acc:#1f5fd6;--acc2:#e7eefc;--ok:#1b7f4b;--warn:#fff4cc;font-family:"Segoe UI",system-ui,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#15171b;--pn:#1e2127;--ink:#e8e9ec;--mut:#9a9fa9;--ln:#343943;--acc:#6b9bff;--acc2:#222c44;--ok:#4cc38a;--warn:#403a1c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-size:14px}
+header{padding:12px 16px;border-bottom:1px solid var(--ln);background:var(--pn);position:sticky;top:0;z-index:5}
+h1{font-size:17px;margin:0 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+button,select,input[type=number],input[type=text]{font:inherit;color:var(--ink);background:var(--pn);border:1px solid var(--ln);border-radius:6px;padding:5px 9px}
+button{cursor:pointer}button:hover{border-color:var(--acc)}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+label{display:inline-flex;gap:4px;align-items:center;color:var(--mut);font-size:13px}
+#msg{color:var(--ok);font-weight:600;margin-left:6px}
+main{display:grid;grid-template-columns:minmax(320px,44%) 1fr;gap:14px;padding:14px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+.panel{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:10px}
+#pdfPane{position:sticky;top:calc(var(--hh,60px) + 10px)}
+[hidden]{display:none!important}
+#edBar{position:sticky;top:var(--hh,60px);z-index:4;background:var(--pn);margin:-10px -10px 0;padding:8px 10px 4px;border-bottom:1px solid var(--ln);border-radius:8px 8px 0 0}
+#edBar .row{margin:4px 0}
+#jsonView{margin-top:8px;background:#1e1e1e;color:#d4d4d4;border-radius:6px;padding:6px 0;font:12.5px/1.55 Consolas,"Cascadia Mono",Menlo,monospace;overflow-x:auto}
+.jl{display:flex;white-space:pre;min-width:max-content}.jl:hover{background:#2a2d2e}
+.ln{flex:0 0 56px;text-align:right;padding-right:10px;color:#858585;user-select:none}
+.fd{flex:0 0 18px;color:#c5c5c5;cursor:pointer;user-select:none;text-align:center}
+.jk{color:#9cdcfe}.js{color:#ce9178}.jn{color:#b5cea8}.jb{color:#569cd6}
+.fdmark{color:#9a9a9a;background:#333;border-radius:3px;padding:0 4px;cursor:pointer}
+#view{overflow:auto;max-height:calc(100vh - 290px);min-height:260px;background:var(--bg);border:1px solid var(--ln);border-radius:6px;text-align:center}
+#pg{position:relative;display:inline-block;line-height:0}
+#ov{position:absolute;inset:0;cursor:crosshair;touch-action:none}
+#cv{display:block;image-rendering:auto}
+#viewWrap{position:relative}
+.edge{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:34px;height:70px;padding:0;font-size:28px;line-height:1;border-radius:10px;opacity:.5;background:var(--pn);box-shadow:0 2px 8px rgba(0,0,0,.25);transition:opacity .15s}
+.edge:hover:not(:disabled){opacity:1;background:var(--acc);color:#fff;border-color:var(--acc)}
+.edge:disabled{opacity:.15;cursor:default}
+.edge.l{left:6px}.edge.r{right:22px}
+#zLbl{min-width:46px;text-align:center;color:var(--mut);font-size:13px}
+dialog{background:var(--pn);color:var(--ink);border:1px solid var(--ln);border-radius:10px;width:min(680px,92vw)}
+#fl .fr{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--ln)}
+#fl .fr .fn{flex:0 0 190px;font:12px Consolas,monospace;word-break:break-all}
+#fl .fr .sm{flex:1;color:var(--mut);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.szg{display:inline-flex;gap:4px;align-items:center;margin-left:6px}
+kbd{font:11.5px Consolas,monospace;background:var(--acc2);border:1px solid var(--ln);border-radius:4px;padding:0 4px}
+.box{position:absolute;border:2px solid var(--acc);background:rgba(47,111,237,.18);pointer-events:none}
+.hint{color:var(--mut);font-size:12.5px;line-height:1.5;margin:6px 0 0}
+#list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.pc{border:1px solid var(--ln);border-radius:8px;background:var(--pn);padding:6px 8px}
+.pc:focus-within{border-color:var(--acc)}
+.ph{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.ph .sp{flex:1}.ph button,.ph select{padding:2px 7px;font-size:12.5px}
+.ix{color:var(--mut);font-size:12px;min-width:26px}
+.txt{min-height:24px;line-height:1.55;font-size:15px;outline:none;white-space:pre-wrap;padding:2px 2px}
+.pc input[type=text]{width:100%}
+.k-h .txt,.k-evo .txt{font-weight:700;font-size:18px}
+.k-evo .txt,.k-cap .txt{text-decoration:line-through}
+.k-cap .txt{color:var(--mut)}
+.k-h,.k-evo{background:var(--acc2)}
+.sepmark{text-align:center;font-size:20px;color:var(--mut)}
+.tb button{min-width:34px}
+.tblw{overflow-x:auto}
+table.et{border-collapse:collapse;width:100%;margin:4px 0}
+table.et th,table.et td{border:1px solid var(--ln);padding:5px 8px;min-width:60px;height:1.8em;vertical-align:top;outline:none}
+table.et th{background:var(--acc2);font-weight:700}
+table.et th:focus,table.et td:focus{outline:2px solid var(--acc);outline-offset:-2px}
+.tc{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}.tc button{padding:2px 8px;font-size:12.5px}
+.el{margin:4px 0;padding-left:28px}.el li{padding:2px;outline:none;line-height:1.55;font-size:15px}
+.el li:focus{outline:2px solid var(--acc);outline-offset:1px;border-radius:2px}
+.al-center .txt{text-align:center}.al-right .txt{text-align:right}
+button.danger{color:#c0392b;border-color:#c0392b}
+</style>
+</head>
+<body>
+<header>
+  <h1>PDF → Kitob JSON</h1>
+  <div class="row">
+    <button class="pri" id="bPdf">📄 PDF ochish</button><input type="file" id="fPdf" accept="application/pdf" hidden>
+    <button id="bImp">📥 JSON / Dart ochish</button><input type="file" id="fImp" accept=".json,.dart,.txt" hidden>
+    <button id="bUndo">↶ Ortga</button>
+    <button id="bJson">⬇ JSON</button><button id="bCopy">⧉ JSON nusxa</button>
+    <button id="bDart">⬇ Dart</button><button id="bCopyDart">⧉ Dart nusxa</button>
+    <span id="msg"></span>
+  </div>
+</header>
+<main>
+<section class="panel" id="pdfPane">
+  <div class="row">
+    <button id="pPrev" title="Oldingi sahifa (←)">◀</button>
+    <input type="number" id="pNo" min="1" value="1" style="width:64px"> <span id="pTot">/ 0</span>
+    <button id="pNext" title="Keyingi sahifa (→)">▶</button>
+    <button id="zOut" title="Kichraytirish (−)">−</button><span id="zLbl">140%</span><button id="zIn" title="Kattalashtirish (+)">＋</button><button id="zFit" title="Kenglikka moslash (0)">↔</button>
+    <button id="bPage">Sahifani qo'sh</button>
+    <button id="bFonts" title="Sahifadagi shriftlar: qalin/kursiv aniqlanishini ko'rish va to'g'rilash">🔠 Shriftlar</button>
+  </div>
+  <div class="row">
+    <label>Oraliq <input type="number" id="rA" min="1" style="width:60px"> – <input type="number" id="rB" min="1" style="width:60px"></label>
+    <button id="bRange">Oraliqni qo'sh</button>
+    <button id="bRegion">Belgilanganini qo'sh</button>
+  </div>
+  <div class="row">
+    <label><input type="checkbox" id="cAuto" checked> Belgilaganda avtomatik qo'shish</label>
+    <label><input type="checkbox" id="cFmt" checked> Qalin/qiyani aniqlash</label>
+    <label><input type="checkbox" id="cHF" checked> Sahifa raqami/sarlavhasini tashlash</label>
+    <label><input type="checkbox" id="cMerge" checked> Uzilgan abzasni ulash</label>
+    <label>Abzas ajratish <select id="sSens"><option value="0">odatiy</option><option value="1">ko'proq ajrat</option><option value="2">kamroq ajrat</option></select></label>
+  </div>
+  <div id="viewWrap">
+    <button class="edge l" id="eL" title="Oldingi sahifa (←)" disabled>‹</button>
+    <div id="view"><div id="pg"><canvas id="cv"></canvas><div id="ov"></div></div></div>
+    <button class="edge r" id="eR" title="Keyingi sahifa (→)" disabled>›</button>
+  </div>
+  <p class="hint">PDF sahifasida sichqoncha bilan to'rtburchak chizing — ichidagi matn abzaslarga ajratilib, bold/italic bilan o'ng tomondagi muharrirga tushadi. Oraliq tugmasi butun sahifalarni birdan qo'shadi.<br>
+  <b>Tugmalar:</b> <kbd>←</kbd>/<kbd>→</kbd> yoki <kbd>PageUp</kbd>/<kbd>PageDown</kbd> — sahifa, <kbd>Home</kbd>/<kbd>End</kbd> — birinchi/oxirgi, <kbd>+</kbd>/<kbd>−</kbd> — masshtab, <kbd>0</kbd> — kenglikka moslash. Matn yozayotganda: <kbd>Alt</kbd>+<kbd>PageDown</kbd>/<kbd>PageUp</kbd> yoki <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>.</p>
+</section>
+
+<section class="panel" id="edPane">
+  <div id="edBar">
+    <div class="row">
+      <button id="tabEd" class="pri">✎ Muharrir</button><button id="tabJs">{ } JSON ko'rish</button>
+      <select id="partSel" style="max-width:230px"></select>
+      <button id="bNewPart">＋ Bob</button><button id="bDelPart">🗑 Bob</button><button id="bClear" class="danger" title="Faqat joriy section ichidagi elementlarni o'chiradi">🧹 Section tozalash</button><button id="bClearAll" class="danger" title="Barcha bob, chapter, section va elementlarni o'chiradi">🗑 Butun kitobni tozalash</button>
+      <label>part <input type="text" id="fPart" style="width:130px" placeholder="Chapter One"></label>
+      <label>subtitle <input type="text" id="fSub" style="width:200px" placeholder="1. Maximize Minimal Potential"></label>
+      <span class="hint" id="cnt"></span>
+    </div>
+    <div class="row" id="secRow">
+      <label>Chapter <select id="chSel" style="max-width:190px"></select></label><button id="bNewCh" title="Joriy chapterdan keyin yangi chapter">＋ Chapter</button><button id="bDelCh" title="Joriy chapterni o'chirish">🗑</button>
+      <label>Section <select id="secSel" style="max-width:220px"></select></label><button id="bNewSec" title="Joriy section'dan keyin yangi section qo'shish">＋ Section</button><button id="bSecUp" title="Section'ni yuqoriga">↑</button><button id="bSecDn" title="Section'ni pastga">↓</button><button id="bDelSec" title="Joriy section'ni o'chirish">🗑</button>
+    </div>
+    <div class="row" id="metaRow">
+      <label>volume <input type="text" id="fVol" style="width:150px"></label>
+      <label>chapter <input type="text" id="fChap" style="width:130px"></label>
+      <label>section title <input type="text" id="fSecT" style="width:200px"></label>
+      <label>section subtitle <input type="text" id="fSecS" style="width:150px"></label>
+      <button id="bFillAll" class="pri" title="Barcha bob, chapter va section'larda bo'sh volume/chapter/title/subtitle maydonlarini to'ldiradi">✨ Hammasini to'ldirish</button>
+      <span class="hint">Bo'sh qoldirsangiz part/subtitle'dan avtomatik olinadi (kulrang yozuv).</span>
+    </div>
+    <div class="row tb edTools">
+      <button data-cmd="bold"><b>B</b></button><button data-cmd="italic"><i>I</i></button><button data-cmd="underline" title="Tagiga chizish (Ctrl+U)"><u>U</u></button><button data-cmd="strikeThrough" title="O'rtasiga chizish (Ctrl+Shift+X)"><s>S</s></button>
+      <button data-cmd="removeFormat" title="Belgilangan matn formatini tozalash">Format tozalash</button>
+      <span class="szg"><label>Razmer <input type="number" id="fsz" list="fszl" min="8" max="96" step="1" value="15" style="width:62px" title="Belgilangan matn razmeri (Enter — qo'llash)"></label>
+        <datalist id="fszl"><option>10</option><option>12</option><option>14</option><option>15</option><option>16</option><option>18</option><option>20</option><option>24</option><option>28</option><option>32</option></datalist>
+        <button id="szApply" title="Razmerni qo'llash">✓</button><button id="szDec" title="Kichraytirish (Ctrl+Shift+,)">A−</button><button id="szInc" title="Kattalashtirish (Ctrl+Shift+.)">A＋</button><button id="szReset" title="Asl razmerga qaytarish">Asl</button></span>
+      <button data-add="p">＋ Abzas</button><button data-add="img">＋ Rasm</button><button data-add="sep">＋ Σ</button><button data-add="evo">＋ Evolution</button><button data-add="h">＋ Sarlavha</button><button data-add="table">▦ Jadval</button><button data-add="ul">• Ro'yxat</button><button data-add="ol">1. Ro'yxat</button>
+    </div>
+    <div class="row" id="jsTools" hidden>
+      <select id="jsScope"><option value="cur">Joriy bob</option><option value="all">Hamma boblar</option></select>
+      <button id="jsFoldBlocks">⊟ Bloklarni yig'ish</button><button id="jsFoldAll">⊟ Hammasini yig'ish</button><button id="jsUnfold">⊞ Yoyish</button>
+      <button id="jsRefresh">↻ Yangilash</button><button id="jsCopy">⧉ Nusxalash</button>
+      <span class="hint">▾/▸ — yig'ish/yoyish. Qidirish: Ctrl+F</span>
+    </div>
+  </div>
+  <p class="hint edTools">Enter — abzasni kursor joyidan ikkiga bo'ladi. Abzas boshida Backspace — oldingisiga qo'shadi. Belgilangan matnga B / I / U / <s>S</s> (o'rtasiga chizish) va razmer (A− / A＋ yoki raqam + Enter) qo'llanadi. Matn abzasidagi ⯇/▭/⯈ tugmasi matnni chap/markaz/o'ngga tekislaydi. Bobning "part/subtitle" nomidan volume, chapter, section title/subtitle avtomatik to'ldiriladi — xohlasangiz yuqoridagi maydonlarda o'zgartiring. Bir chapter ichida bir nechta section ochish mumkin (＋ Section).</p>
+  <div id="list"></div>
+  <div id="jsonView" hidden></div>
+</section>
+</main>
+<dialog id="fdlg"><h3 style="margin:0 0 6px">Sahifadagi shriftlar</h3>
+<p class="hint" style="margin:0 0 8px">Qaysi shrift qalin (B) yoki kursiv (I) ekanini belgilang — saqlanadi va keyingi belgilashlarda ishlatiladi.</p>
+<div id="fl"></div><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="pri" id="fClose">Tayyor</button></div></dialog>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const med=a=>{if(!a.length)return 0;a=[...a].sort((x,y)=>x-y);return a[a.length>>1]};
+const mode=a=>{const m={};let best=a[0],n=0;a.forEach(v=>{m[v]=(m[v]||0)+1;if(m[v]>n){n=m[v];best=v}});return best};
+const SENS={0:[1.5,.8],1:[1.25,.5],2:[1.9,1.5]};
+const KEY='pdf-kitob-json-v1';
+
+/* ---------- state ---------- */
+const newSec=()=>({paras:[]}),newCh=()=>({sections:[newSec()]});
+let parts=[{part:'Introduction',subtitle:'',chapters:[newCh()]}],cur=0,cc=0,cs=0,undo=[],lastIdx=-1;
+const P=()=>parts[cur],CH=()=>P().chapters[cc],S=()=>CH().sections[cs];
+const clamp=(v,n)=>Math.max(0,Math.min(v,n-1));
+/* eski format (paras) -> chapters/sections; indekslarni to'g'rilash */
+function fix(){parts.forEach(p=>{if(!p.chapters){p.chapters=[{sections:[{paras:p.paras||[]}]}];delete p.paras}
+  if(!p.chapters.length)p.chapters=[newCh()];p.chapters.forEach(c=>{if(!c.sections||!c.sections.length)c.sections=[newSec()]})});
+  cur=clamp(cur,parts.length);cc=clamp(cc,P().chapters.length);cs=clamp(cs,CH().sections.length)}
+const autoName=p=>p.subtitle!==''?p.subtitle:p.part,autoSub=p=>p.subtitle!==''?p.part:'';
+let msgT;function msg(t){$('msg').textContent=t;clearTimeout(msgT);msgT=setTimeout(()=>$('msg').textContent='',2500)}
+function snap(){undo.push(JSON.stringify({parts,cur,cc,cs}));if(undo.length>60)undo.shift()}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({parts,cur,cc,cs}))}catch(e){}}
+let saveT;function saveSoon(){clearTimeout(saveT);saveT=setTimeout(save,400)}
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&s.parts&&s.parts.length){parts=s.parts;cur=s.cur||0;cc=s.cc||0;cs=s.cs||0}}catch(e){}
+fix();
+
+/* ---------- run helpers ---------- */
+function norm(rs){const o=[];for(const r of rs){if(!r.t)continue;const l=o[o.length-1];
+  if(l&&!!l.b===!!r.b&&!!l.i===!!r.i&&!!l.u===!!r.u&&!!l.st===!!r.st&&(l.fs||0)===(r.fs||0))l.t+=r.t;
+  else o.push({t:r.t,b:!!r.b,i:!!r.i,u:!!r.u,st:!!r.st,fs:r.fs||0})}return o}
+function tidy(rs){rs=norm(rs.map(r=>({...r,t:r.t.replace(/\s+/g,' ')})));
+  if(rs.length){rs[0].t=rs[0].t.trimStart();rs[rs.length-1].t=rs[rs.length-1].t.trimEnd()}return rs.filter(r=>r.t)}
+function joinRuns(a,b){a=a.map(r=>({...r}));b=b.map(r=>({...r}));if(!a.length)return b;if(!b.length)return a;
+  const l=a[a.length-1],f=b[0];
+  if(/[A-Za-z]-$/.test(l.t)&&/^\p{Ll}/u.test(f.t))l.t=l.t.slice(0,-1);
+  else if(!/\s$/.test(l.t)&&!/^\s/.test(f.t))l.t+=' ';
+  return norm(a.concat(b))}
+const plain=p=>p.runs.map(r=>r.t).join('');
+function runsHtml(rs){return rs.map(r=>{let h=esc(r.t);if(r.st)h='<s>'+h+'</s>';if(r.u)h='<u>'+h+'</u>';if(r.i)h='<i>'+h+'</i>';if(r.b)h='<b>'+h+'</b>';
+  if(r.fs)h='<span style="font-size:'+r.fs+'px">'+h+'</span>';return h}).join('')}
+function domRuns(el){const out=[];
+  const def=el.isConnected?parseFloat(getComputedStyle(el).fontSize):NaN;
+  function push(t,s){if(!t)return;t=t.replace(/\u00a0/g,' ').replace(/\n/g,' ');
+    const l=out[out.length-1],fs=s.fs||0;
+    if(l&&!!l.b===!!s.b&&!!l.i===!!s.i&&!!l.u===!!s.u&&!!l.st===!!s.st&&(l.fs||0)===fs)l.t+=t;
+    else out.push({t,b:!!s.b,i:!!s.i,u:!!s.u,st:!!s.st,fs})}
+  (function w(n,st){
+    if(n.nodeType===3)return push(n.textContent,st);
+    if(n.nodeType!==1)return;
+    const t=n.tagName,s={...st},fw=n.style.fontWeight||'',td=(n.style.textDecoration||'')+' '+(n.style.textDecorationLine||'');
+    if(t==='BR')return push(' ',st);
+    if(t==='B'||t==='STRONG'||fw==='bold'||/^[6-9]00$/.test(fw))s.b=true;
+    if(t==='I'||t==='EM'||n.style.fontStyle==='italic')s.i=true;
+    if(t==='U'||/underline/.test(td))s.u=true;
+    if(t==='S'||t==='STRIKE'||t==='DEL'||/line-through/.test(td))s.st=true;
+    const f=parseFloat(n.style.fontSize);
+    if(f>0)s.fs=Math.abs(f-def)<.4?0:Math.round(f*2)/2;
+    n.childNodes.forEach(c=>w(c,s))})(el,{});
+  return out}
+
+/* ---------- export / import ---------- */
+let tblN=0;
+const deco=(r,force)=>[r.u?'underline':'',(force||r.st)?'line-through':''].filter(Boolean).join(' ');
+const runObj=r=>{const o={text:r.t};if(r.b)o.font_weight='bold';if(r.i)o.font_style='italic';const d=deco(r);if(d)o.text_decoration=d;if(r.fs)o.font_size=String(r.fs);return o};
+const cellObj=(runs,al)=>{const o={type:'text'};if(al)o.align=al;o.content=runs.filter(r=>r.t).map(runObj);return o};
+function parasToBlocks(paras){const out=[];const nl=()=>out.push({type:'text',content:'\n'});
+  paras.forEach((p,idx)=>{
+    if(idx){nl();if(p.k==='evo'||p.k==='h'){nl();nl();nl()}}
+    if(p.k==='img')out.push({type:'image',content:p.img||''});
+    else if(p.k==='sep')out.push({type:'line',content:'Σ'});
+    else if(p.k==='table')out.push({type:'table',id:'table_'+(++tblN),headers:p.headers.map(c=>cellObj(c.runs,c.align||'left')),rows:p.rows.map(r=>r.map(c=>cellObj(c.runs)))});
+    else if(p.k==='ul'||p.k==='ol')out.push({type:'list',ordered:p.k==='ol',items:(p.items||[]).map(it=>cellObj(it))});
+    else p.runs.forEach(r=>{if(!r.t)return;const o={type:'text',content:r.t},big=p.k==='evo'||p.k==='h';
+      const d=(p.k==='cap'||p.k==='evo')?'line-through':deco(r);if(d)o.text_decoration=d;
+      if(r.b||big)o.font_weight='bold';if(r.i)o.font_style='italic';if(r.fs)o.font_size=String(r.fs);else if(big)o.font_size='18';if(p.al)o.text_align=p.al;out.push(o)})});
+  return out}
+function partObj(p){const name=autoName(p),ap=autoSub(p);
+  return{part:p.part,subtitle:p.subtitle,chapters:p.chapters.map(c=>({volume:c.volume??name,chapter:c.chapter??ap,
+    section:c.sections.map(x=>({title:x.title??name,subtitle:x.subtitle??ap,blocks:parasToBlocks(x.paras)}))}))}}
+const toJson=()=>{tblN=0;return JSON.stringify(parts.map(partObj),null,2)};
+const toDart=()=>'final List<Map<String, dynamic>> bookPartData = '+toJson().replace(/\$/g,'\\$')+';\n';
+function finish(c){const all=f=>c.runs.every(r=>r[f]);let k='p';
+  if(all('s')&&all('b')&&all('z'))k='evo';else if(all('b')&&all('z'))k='h';else if(all('s'))k='cap';
+  const big=k==='h'||k==='evo';
+  return{k,al:c.al,runs:norm(c.runs.map(r=>({t:r.t,b:(k==='p'||k==='cap')?r.b:false,i:r.i,u:r.u,st:k==='p'?r.s:false,fs:(big&&r.fs===18)?0:r.fs})))}}
+const cr=c=>norm((Array.isArray(c.content)?c.content:[{text:c.content||''}]).map(x=>({t:x.text||'',b:x.font_weight==='bold',i:x.font_style==='italic',u:/underline/.test(x.text_decoration||''),st:/line-through/.test(x.text_decoration||''),fs:parseFloat(x.font_size)||0})));
+function blocksToParas(bl){const out=[];let c=null;const flush=()=>{if(c&&c.runs.length)out.push(finish(c));c=null};
+  bl.forEach(b=>{
+    if(b.type==='image'){flush();out.push({k:'img',img:b.content,runs:[]})}
+    else if(b.type==='line'){flush();out.push({k:'sep',runs:[]})}
+    else if(b.type==='table'){flush();out.push({k:'table',runs:[],headers:(b.headers||[]).map(h=>({runs:cr(h),align:h.align||'left'})),rows:(b.rows||[]).map(r=>r.map(c=>({runs:cr(c)})))})}
+    else if(b.type==='list'){flush();out.push({k:b.ordered?'ol':'ul',runs:[],items:(b.items||[]).map(cr)})}
+    else if(b.content==='\n')flush();
+    else if(b.content){c=c||{runs:[],al:b.text_align};c.runs.push({t:b.content,b:b.font_weight==='bold',i:b.font_style==='italic',u:/underline/.test(b.text_decoration||''),s:/line-through/.test(b.text_decoration||''),z:!!b.font_size,fs:parseFloat(b.font_size)||0})}});
+  flush();return out}
+function parseBook(txt){const a=txt.indexOf('['),b=txt.lastIndexOf(']');
+  const t=txt.slice(a,b+1).replace(/\\\$/g,()=>'$').replace(/,(\s*[}\]])/g,'$1');
+  return JSON.parse(t).map(o=>{const p={part:o.part||'',subtitle:o.subtitle||''},name=autoName(p),ap=autoSub(p);
+    const chs=(o.chapters||[]).map(c=>{const ch={sections:(c.section||[]).map(x=>{const q={paras:blocksToParas(x.blocks||[])};
+        if(x.title!==undefined&&x.title!==name)q.title=x.title;if(x.subtitle!==undefined&&x.subtitle!==ap)q.subtitle=x.subtitle;return q})};
+      if(c.volume!==undefined&&c.volume!==name)ch.volume=c.volume;if(c.chapter!==undefined&&c.chapter!==ap)ch.chapter=c.chapter;
+      if(!ch.sections.length)ch.sections=[newSec()];return ch});
+    p.chapters=chs.length?chs:[newCh()];return p})}
+function dl(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function copy(text){try{await navigator.clipboard.writeText(text)}catch(e){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}msg('✓ Nusxalandi')}
+$('bJson').onclick=()=>dl('bookPartData.json',toJson());
+$('bDart').onclick=()=>dl('book_part_data.dart',toDart());
+$('bCopy').onclick=()=>copy(toJson());
+$('bCopyDart').onclick=()=>copy(toDart());
+$('bImp').onclick=()=>$('fImp').click();
+$('fImp').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{const np=parseBook(await f.text());snap();parts=np;cur=0;cc=0;cs=0;render();msg('✓ Yuklandi: '+np.length+' bob')}
+  catch(err){alert("Faylni o'qib bo'lmadi: "+err.message)}e.target.value=''};
+$('bUndo').onclick=doUndo;
+function doUndo(){if(!undo.length)return msg('Ortga qaytadigan narsa yo\'q');const s=JSON.parse(undo.pop());parts=s.parts;cur=s.cur;cc=s.cc||0;cs=s.cs||0;render()}
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.target.closest?.('.txt,input')){e.preventDefault();doUndo()}});
+
+/* ---------- editor ---------- */
+const list=$('list');
+const KINDS=[['p','Abzas'],['h','Sarlavha (qalin 18)'],['evo','Evolution'],['cap','Izoh (chizilgan)'],['img','Rasm'],['sep','Σ chiziq'],['table','Jadval'],['ul','Ro\'yxat •'],['ol','Ro\'yxat 1.']];
+function nextImg(){let m=0;parts.forEach(p=>p.chapters.forEach(c=>c.sections.forEach(x=>x.paras.forEach(q=>{const r=/doc(\d+)\./.exec(q.img||'');if(r)m=Math.max(m,+r[1])}))));return'assets/images/doc/doc'+(m+1)+'.png'}
+function render(){fix();
+  $('partSel').innerHTML=parts.map((p,i)=>`<option value="${i}">${i+1}. ${esc(p.part)} ${esc(p.subtitle)}</option>`).join('');
+  $('partSel').value=cur;$('fPart').value=P().part;$('fSub').value=P().subtitle;
+  const nm=autoName(P()),ap=autoSub(P());
+  $('chSel').innerHTML=P().chapters.map((c,i)=>`<option value="${i}">Chapter ${i+1} · ${esc(c.chapter??ap)}</option>`).join('');$('chSel').value=cc;
+  $('secSel').innerHTML=CH().sections.map((x,i)=>`<option value="${i}">Section ${i+1} · ${esc(x.title??nm)}</option>`).join('');$('secSel').value=cs;
+  [['fVol',CH().volume,nm],['fChap',CH().chapter,ap],['fSecT',S().title,nm],['fSecS',S().subtitle,ap]].forEach(([id,v,ph])=>{$(id).value=v??'';$(id).placeholder=ph||'(bo\'sh)'});
+  list.innerHTML='';S().paras.forEach((p,i)=>list.appendChild(card(p,i)));
+  $('cnt').textContent=S().paras.length+' ta element · '+P().chapters.length+' chapter, '+CH().sections.length+' section';save();if(jsMode){folded.clear();buildJs();renderJs()}}
+const NOTEXT=['img','sep','table','ul','ol'];
+const defHead=()=>({runs:[{t:'Sarlavha',b:false,i:false,u:false}],align:'left'});
+function focusEl(el){if(!el)return;el.focus();if(el.isContentEditable){const r=document.createRange();r.selectNodeContents(el);r.collapse(true);const s=getSelection();s.removeAllRanges();s.addRange(r)}}
+function focusIdx(i){focusEl(list.children[i]&&list.children[i].querySelector('.txt,input,li,th'))}
+function plainPaste(e){e.preventDefault();document.execCommand('insertText',false,(e.clipboardData.getData('text/plain')||'').replace(/\s*\n\s*/g,' '))}
+function splitRuns(el){const s=getSelection();if(!s.rangeCount)return null;const r=s.getRangeAt(0);
+  const a=document.createRange();a.setStart(el,0);a.setEnd(r.startContainer,r.startOffset);
+  const b=document.createRange();b.setStart(r.endContainer,r.endOffset);b.setEnd(el,el.childNodes.length);
+  const da=document.createElement('div'),db=document.createElement('div');da.appendChild(a.cloneContents());db.appendChild(b.cloneContents());
+  return{a:tidy(domRuns(da)),b:tidy(domRuns(db))}}
+function atStart(el){const s=getSelection();if(!s.rangeCount||!s.isCollapsed)return false;const r=s.getRangeAt(0),pre=document.createRange();
+  pre.selectNodeContents(el);pre.setEnd(r.startContainer,r.startOffset);return pre.toString()===''}
+function convertKind(p,nk){
+  if(p.k==='table')p.runs=tidy([].concat(...[p.headers,...p.rows].flat().map(c=>[...c.runs,{t:' '}])));
+  else if(p.k==='ul'||p.k==='ol')p.runs=tidy([].concat(...(p.items||[]).map(it=>[...it,{t:' '}])));
+  p.runs=p.runs||[];p.k=nk;
+  if(nk==='table'){if(!p.headers){p.headers=[defHead(),defHead()];p.rows=[[{runs:p.runs},{runs:[]}]]}}
+  else if(nk==='ul'||nk==='ol'){if(!p.items)p.items=[p.runs.length?p.runs:[]]}
+  else{delete p.headers;delete p.rows;delete p.items}
+  if(nk==='table'||nk==='ul'||nk==='ol'||nk==='img'||nk==='sep')p.al=undefined;
+  if(nk==='img'&&!p.img)p.img=nextImg()}
+function tableBody(p,i){
+  const w=document.createElement('div');w.className='tblw';let foc={r:-1,c:0};
+  const cellEl=(tag,cell,r,c)=>{const e=document.createElement(tag);e.contentEditable='true';e.innerHTML=runsHtml(cell.runs);
+    if(tag==='th')e.style.textAlign=cell.align||'left';
+    e.onfocus=()=>{foc={r,c};lastIdx=i};e.oninput=()=>{cell.runs=domRuns(e);saveSoon()};e.onpaste=plainPaste;
+    e.onkeydown=ev=>{if(ev.key==='Enter')ev.preventDefault()};return e};
+  const tb=document.createElement('table');tb.className='et';
+  const hr=document.createElement('tr');p.headers.forEach((c,k)=>hr.appendChild(cellEl('th',c,-1,k)));
+  const th=document.createElement('thead');th.appendChild(hr);tb.appendChild(th);
+  const bd=document.createElement('tbody');
+  p.rows.forEach((row,r)=>{const tr=document.createElement('tr');row.forEach((c,k)=>tr.appendChild(cellEl('td',c,r,k)));bd.appendChild(tr)});
+  tb.appendChild(bd);
+  const hc=()=>p.headers[Math.min(foc.c,p.headers.length-1)];
+  const ctl=document.createElement('div');ctl.className='tc';
+  [['＋ Qator',()=>p.rows.push(p.headers.map(()=>({runs:[]}))),"Pastiga qator qo'shish"],
+   ['＋ Ustun',()=>{p.headers.push(defHead());p.rows.forEach(r=>r.push({runs:[]}))},"Ustun qo'shish"],
+   ['− Qator',()=>{if(p.rows.length)p.rows.splice(foc.r>=0?foc.r:p.rows.length-1,1)},"Belgilangan (yoki oxirgi) qatorni o'chirish"],
+   ['− Ustun',()=>{if(p.headers.length<2)return;const c=Math.min(foc.c,p.headers.length-1);p.headers.splice(c,1);p.rows.forEach(r=>r.splice(c,1))},"Belgilangan ustunni o'chirish"],
+   ['⯇',()=>{hc().align='left'},'Sarlavhani chapga'],['▭',()=>{hc().align='center'},"Sarlavhani o'rtaga"],['⯈',()=>{hc().align='right'},"Sarlavhani o'ngga"]
+  ].forEach(([t,f,ti])=>{const b=document.createElement('button');b.textContent=t;b.title=ti;b.onclick=()=>{snap();f();render()};ctl.appendChild(b)});
+  w.append(tb,ctl);return w}
+function listBody(p,i){
+  const L=document.createElement(p.k==='ol'?'ol':'ul');L.className='el';if(!p.items||!p.items.length)p.items=[[]];
+  const nth=k=>list.children[i].querySelectorAll('li')[k];
+  p.items.forEach((it,k)=>{const li=document.createElement('li');li.contentEditable='true';li.innerHTML=runsHtml(it);
+    li.onfocus=()=>lastIdx=i;li.oninput=()=>{p.items[k]=domRuns(li);saveSoon()};li.onpaste=plainPaste;
+    li.onkeydown=e=>{
+      if(e.key==='Enter'){e.preventDefault();const x=splitRuns(li);if(!x)return;snap();p.items[k]=x.a;p.items.splice(k+1,0,x.b);render();focusEl(nth(k+1))}
+      else if(e.key==='Backspace'&&k>0&&atStart(li)){e.preventDefault();snap();p.items[k-1]=joinRuns(p.items[k-1],p.items[k]);p.items.splice(k,1);render();focusEl(nth(k-1))}};
+    L.appendChild(li)});
+  return L}
+function card(p,i){
+  const d=document.createElement('div');d.className='pc k-'+p.k+(p.al?' al-'+p.al:'');
+  const txtK=!NOTEXT.includes(p.k),alLbl=p.al==='center'?'▭ Markaz':p.al==='right'?"⯈ O'ng":'⯇ Chap';
+  d.innerHTML=`<div class="ph"><span class="ix">${i+1}</span><select>${KINDS.map(k=>`<option value="${k[0]}"${k[0]===p.k?' selected':''}>${k[1]}</option>`).join('')}</select>${txtK?`<button data-a="al" title="Tekislash: chap → markaz → o'ng">${alLbl}</button>`:''}<span class="sp"></span>
+  <button data-a="up">↑</button><button data-a="dn">↓</button><button data-a="mg" title="Oldingi abzasga qo'shish">⤒ Ulash</button><button data-a="add" title="Pastiga yangi abzas">＋</button><button data-a="del">🗑</button></div>`;
+  let body;
+  if(p.k==='img'){body=document.createElement('input');body.type='text';body.value=p.img||'';body.oninput=()=>{p.img=body.value;saveSoon()};body.onfocus=()=>lastIdx=i}
+  else if(p.k==='sep'){body=document.createElement('div');body.className='sepmark';body.textContent='Σ'}
+  else if(p.k==='table')body=tableBody(p,i);
+  else if(p.k==='ul'||p.k==='ol')body=listBody(p,i);
+  else{body=document.createElement('div');body.className='txt';body.contentEditable='true';body.spellcheck=false;body.innerHTML=runsHtml(p.runs);
+    body.oninput=()=>{p.runs=domRuns(body);saveSoon()};body.onfocus=()=>lastIdx=i;body.onpaste=plainPaste;
+    body.onkeydown=e=>{
+      if(e.key==='Enter'){e.preventDefault();splitPara(i,body)}
+      else if(e.key==='Backspace'&&i>0&&!NOTEXT.includes(S().paras[i-1].k)&&atStart(body)){e.preventDefault();mergeUp(i)}}}
+  d.appendChild(body);
+  d.querySelector('select').onchange=e=>{snap();convertKind(p,e.target.value);render()};
+  d.querySelector('.ph').onclick=e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a)return;const ps=S().paras;snap();
+    if(a==='up'&&i>0){[ps[i-1],ps[i]]=[ps[i],ps[i-1]];render()}
+    else if(a==='dn'&&i<ps.length-1){[ps[i+1],ps[i]]=[ps[i],ps[i+1]];render()}
+    else if(a==='mg'){undo.pop();mergeUp(i)}
+    else if(a==='al'){p.al=p.al==='center'?'right':p.al==='right'?undefined:'center';render()}
+    else if(a==='add'){ps.splice(i+1,0,{k:'p',runs:[]});render();focusIdx(i+1)}
+    else if(a==='del'){ps.splice(i,1);render()}
+    else undo.pop()};
+  return d}
+function mergeUp(i){const ps=S().paras,a=ps[i-1],b=ps[i];if(!a||!b||NOTEXT.includes(a.k)||NOTEXT.includes(b.k))return;
+  snap();a.runs=joinRuns(a.runs,b.runs);ps.splice(i,1);render();focusIdx(i-1)}
+function splitPara(i,el){const x=splitRuns(el);if(!x)return;snap();const p=S().paras[i];p.runs=x.a;
+  S().paras.splice(i+1,0,{k:(p.k==='h'||p.k==='evo')?'p':p.k,al:p.al,runs:x.b});render();focusIdx(i+1)}
+document.querySelectorAll('[data-cmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();
+  b.onclick=()=>{const n=getSelection().anchorNode;if(!n||!(n.nodeType===1?n:n.parentElement).closest('[contenteditable="true"]'))return;document.execCommand(b.dataset.cmd)}});
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.add,q={k,runs:[]};if(k==='img')q.img=nextImg();
+  if(k==='table'){const v=prompt("Jadval: qator x ustun (masalan 3x2). Birinchi qator sarlavha bo'ladi",'3x2');if(v===null)return;
+    const m=/(\d+)\D+(\d+)/.exec(v)||[0,3,2],R=Math.max(1,Math.min(50,+m[1])),C=Math.max(1,Math.min(20,+m[2]));
+    q.headers=Array.from({length:C},defHead);q.rows=Array.from({length:R-1},()=>Array.from({length:C},()=>({runs:[]})))}
+  if(k==='ul'||k==='ol')q.items=[[]];
+  snap();const at=(lastIdx>=0&&lastIdx<S().paras.length)?lastIdx+1:S().paras.length;S().paras.splice(at,0,q);render();focusIdx(at)});
+$('bClearAll').onclick=()=>{
+  const n=parts.reduce((a,p)=>a+p.chapters.reduce((b,c)=>b+c.sections.reduce((d,x)=>d+x.paras.length,0),0),0);
+  if(!confirm('BUTUN kitob tozalansinmi?\n\n'+parts.length+" ta bob va "+n+" ta element o'chiriladi, bitta bo'sh bob qoladi.\n(↶ Ortga bilan qaytarish mumkin)"))return;
+  snap();parts=[{part:'Introduction',subtitle:'',chapters:[newCh()]}];cur=0;cc=0;cs=0;lastIdx=-1;render();msg('✓ Butun kitob tozalandi')};
+$('bClear').onclick=()=>{if(!S().paras.length)return msg("Bob allaqachon bo'sh");
+  if(!confirm("Bu bobdagi barcha matn, jadval va ro'yxatlar o'chirilsinmi? (↶ Ortga bilan qaytarish mumkin)"))return;
+  snap();S().paras=[];lastIdx=-1;render();msg('🧹 Tozalandi')};
+$('partSel').onchange=e=>{cur=+e.target.value;cc=0;cs=0;lastIdx=-1;render()};
+$('chSel').onchange=e=>{cc=+e.target.value;cs=0;lastIdx=-1;render()};
+$('secSel').onchange=e=>{cs=+e.target.value;lastIdx=-1;render()};
+$('bNewCh').onclick=()=>{snap();P().chapters.splice(cc+1,0,newCh());cc++;cs=0;lastIdx=-1;render();msg('✓ Chapter qo\'shildi')};
+$('bDelCh').onclick=()=>{if(P().chapters.length<2)return alert("Bobda kamida bitta chapter qolishi kerak");
+  if(!confirm("Bu chapter va ichidagi barcha section'lar o'chirilsinmi? (↶ Ortga bilan qaytarish mumkin)"))return;
+  snap();P().chapters.splice(cc,1);cc=Math.max(0,cc-1);cs=0;lastIdx=-1;render()};
+$('bNewSec').onclick=()=>{snap();CH().sections.splice(cs+1,0,newSec());cs++;lastIdx=-1;render();msg('✓ Section qo\'shildi')};
+$('bDelSec').onclick=()=>{if(CH().sections.length<2)return alert("Chapterda kamida bitta section qolishi kerak");
+  if(!confirm("Bu section o'chirilsinmi? (↶ Ortga bilan qaytarish mumkin)"))return;
+  snap();CH().sections.splice(cs,1);cs=Math.max(0,cs-1);lastIdx=-1;render()};
+$('bSecUp').onclick=()=>{if(cs<1)return;snap();const a=CH().sections;[a[cs-1],a[cs]]=[a[cs],a[cs-1]];cs--;render()};
+$('bSecDn').onclick=()=>{const a=CH().sections;if(cs>=a.length-1)return;snap();[a[cs+1],a[cs]]=[a[cs],a[cs+1]];cs++;render()};
+$('bFillAll').onclick=()=>{if(!confirm("Barcha bob, chapter va section'lardagi bo'sh volume / chapter / title / subtitle maydonlari part/subtitle asosida to'ldirilsinmi? (↶ Ortga bilan qaytarish mumkin)"))return;
+  snap();let n=0;const set=(o,k,v)=>{if(o[k]===undefined){o[k]=v;n++}};
+  parts.forEach(p=>{const nm=autoName(p),ap=autoSub(p);p.chapters.forEach(c=>{set(c,'volume',nm);set(c,'chapter',ap);
+    c.sections.forEach(x=>{set(x,'title',nm);set(x,'subtitle',ap)})})});
+  render();msg('✓ '+n+' ta maydon to\'ldirildi ('+parts.length+' bob)')};
+[['fVol',()=>CH(),'volume'],['fChap',()=>CH(),'chapter'],['fSecT',()=>S(),'title'],['fSecS',()=>S(),'subtitle']].forEach(([id,o,k])=>{
+  $(id).onchange=e=>{snap();const v=e.target.value;if(v==='')delete o()[k];else o()[k]=v;render()}});
+$('fPart').onchange=e=>{P().part=e.target.value;render()};
+$('fSub').onchange=e=>{P().subtitle=e.target.value;render()};
+$('bNewPart').onclick=()=>{const l=prompt('Bob belgisi (masalan: Chapter Ten)');if(l===null)return;
+  const n=prompt("Bob nomi (masalan: 10. Title). Bo'sh qoldirsangiz Introduction kabi bo'ladi",'');if(n===null)return;
+  snap();parts.push({part:l,subtitle:n,chapters:[newCh()]});cur=parts.length-1;cc=0;cs=0;render()};
+$('bDelPart').onclick=()=>{if(parts.length<2)return alert("Kamida bitta bob qolishi kerak");
+  if(!confirm('Bu bob o\'chirilsinmi? (Ortga tugmasi bilan qaytarish mumkin)'))return;snap();parts.splice(cur,1);cur=Math.max(0,cur-1);cc=0;cs=0;render()};
+
+/* ---------- PDF: extraction ---------- */
+let pdf=null,pageNo=1,scale=1.4,vp=null,renderId=0,lastRect=null,fontCache={};
+const fontKey=n=>String(n||'').replace(/^[A-Z]{6}\+/,'');
+let fontOvr={};try{fontOvr=JSON.parse(localStorage.getItem('pdf-kitob-fonts')||'{}')}catch(e){}
+const IT_WORD=/italic|oblique|slanted|kursiv|cursive|(bold|light|medium|semibold|black|regular|book|roman|demi|heavy)(it|ital|obl|i)$/i;
+const IT_TOK=/^(it|ita|ital|obl|kurs|ri|bi|sbi|i|ti|oblq|slant)$/i;
+const BD_WORD=/bold|black|heavy|semibold|demi/i;
+const BD_TOK=/^(bd|bld|b|rb|bi|sb|sbi|bol)$/i;
+function fontInfo(page,n){if(fontCache[n])return fontCache[n];let r={b:false,i:false,name:n};
+  try{const f=page.commonObjs.get(n),raw=(f.name||'')+' '+(f.fallbackName||''),
+      toks=fontKey(f.name).split(/[-_,. ]+/);
+    r={b:!!f.bold||BD_WORD.test(raw)||toks.some(t=>BD_TOK.test(t)),
+       i:!!f.italic||IT_WORD.test(raw)||toks.some(t=>IT_TOK.test(t)),
+       name:fontKey(f.name)||n}}catch(e){return r}
+  return fontCache[n]=r}
+/* matritsa orqali qiyshaytirilgan (soxta italic) matn */
+const skewed=tr=>{const a=Math.abs(tr[0]),d=Math.abs(tr[3]);if(!d||Math.abs(tr[1])>a*.05)return false;const k=Math.abs(tr[2]/tr[3]);return k>.08&&k<.7};
+async function pageItems(page){try{await page.getOperatorList()}catch(e){}
+  const tc=await page.getTextContent(),out=[];
+  for(const it of tc.items){if(it.str===undefined)continue;const f=fontInfo(page,it.fontName),ov=fontOvr[f.name];
+    out.push({s:it.str,x:it.transform[4],y:it.transform[5],w:it.width,h:Math.abs(it.transform[3])||it.height||10,
+      b:ov?ov.b:f.b,i:ov?ov.i:(f.i||skewed(it.transform)),fn:f.name})}
+  return out}
+function buildParas(items,H,hf){
+  const fmt=$('cFmt').checked,lines=[];let L=null;
+  for(const t of items){if(!t.s.trim()&&!L)continue;
+    if(L&&Math.abs(t.y-L.y)<=Math.max(2,L.h*.45))L.it.push(t);else{L={y:t.y,h:t.h,it:[t]};lines.push(L)}}
+  const ls=[];
+  for(const L of lines){L.it.sort((a,b)=>a.x-b.x);const runs=[];let pe=null,last='';
+    for(const t of L.it){let s=t.s.replace(/[\uFB00-\uFB06]/g,c=>c.normalize('NFKC'));if(!s)continue;
+      const sp=!s.trim(),lr=runs[runs.length-1],nb=fmt&&t.b,ni=fmt&&t.i;
+      /* uslub (italic/bold) o'zgarganda bo'shliq chegarasi past: qiya harflar oraliqni yutib yuboradi */
+      const chg=!!lr&&!sp&&!!lr.t.trim()&&(!!nb!==!!lr.b||!!ni!==!!lr.i);
+      const gapMin=chg?-t.h*.08:t.h*.18;
+      const glue=chg&&(/^[,.;:!?)\]}»”’'\"\-–—\/]/.test(s.trimStart())||/[(\[{«“‘\-–—\/]$/.test(last));
+      if(pe!==null&&t.x-pe>gapMin&&!/^\s/.test(s)&&!/\s$/.test(last)&&!glue)s=' '+s;
+      runs.push({t:s,b:sp&&lr?lr.b:nb,i:sp&&lr?lr.i:ni,u:false});pe=t.x+t.w;last=s}
+    const nr=norm(runs),txt=nr.map(r=>r.t).join('').trim();if(!txt)continue;
+    if(hf&&(L.y<H*.06||L.y>H*.94||/^\d{1,4}$/.test(txt)))continue;
+    const real=L.it.filter(t=>t.s.trim());
+    ls.push({y:L.y,x:Math.min(...real.map(t=>t.x)),xe:Math.max(...real.map(t=>t.x+t.w)),h:med(real.map(t=>t.h)),runs:nr,txt,
+      bold:nr.filter(r=>r.t.trim()).every(r=>r.b)})}
+  if(!ls.length)return[];
+  const base=mode(ls.map(l=>Math.round(l.x))),right=Math.max(...ls.map(l=>l.xe)),size=med(ls.map(l=>l.h))||10;
+  const gs=[];for(let i=1;i<ls.length;i++){const g=ls[i-1].y-ls[i].y;if(g>1)gs.push(g)}
+  const gap=med(gs)||size*1.3,[gm,im]=SENS[$('sSens').value],paras=[];let c=null,prev=null;
+  for(const l of ls){
+    const nw=!prev||l.x-base>size*im||prev.y-l.y>gap*gm||l.bold!==prev.bold||(prev.xe<right-size*4&&/[.!?:"”’)]$/.test(prev.txt));
+    if(nw){c={k:'p',runs:l.runs.map(r=>({...r}))};paras.push(c)}else c.runs=joinRuns(c.runs,l.runs);
+    prev=l}
+  return paras.map(p=>({k:'p',runs:tidy(p.runs)})).filter(p=>p.runs.length)}
+function appendParas(np){if(!np.length)return;snap();const ps=S().paras,last=ps[ps.length-1],first=np[0];
+  if($('cMerge').checked&&last&&last.k==='p'&&last.runs.length&&first.runs.length&&!/[.!?:"”’)]$/.test(plain(last).trimEnd())&&/^\p{Ll}/u.test(plain(first))){
+    last.runs=joinRuns(last.runs,first.runs);np.shift()}
+  ps.push(...np);render();if(list.lastElementChild)list.lastElementChild.scrollIntoView({block:'nearest'})}
+async function addRegion(r){if(!pdf||!vp)return;const page=await pdf.getPage(pageNo);
+  const [a,b]=vp.convertToPdfPoint(r.x0,r.y0),[c,d]=vp.convertToPdfPoint(r.x1,r.y1);
+  const x0=Math.min(a,c),x1=Math.max(a,c),y0=Math.min(b,d),y1=Math.max(b,d);
+  const its=(await pageItems(page)).filter(t=>{const cx=t.x+t.w/2,cy=t.y+t.h/2;return cx>=x0&&cx<=x1&&cy>=y0&&cy<=y1});
+  const ps=buildParas(its,page.view[3],false);appendParas(ps);msg(ps.length+' abzas qo\'shildi')}
+async function addPages(a,b){if(!pdf)return;a=Math.max(1,a||pageNo);b=Math.min(pdf.numPages,b||a);let n=0;
+  for(let i=a;i<=b;i++){msg('Sahifa '+i+'/'+b+'...');const page=await pdf.getPage(i);
+    const ps=buildParas(await pageItems(page),page.view[3],$('cHF').checked);n+=ps.length;appendParas(ps)}
+  msg(n+' abzas qo\'shildi ('+a+'–'+b+')')}
+
+/* ---------- PDF: viewer ---------- */
+let rtask=null;
+async function showPage(){if(!pdf)return;const id=++renderId;
+  $('pNo').value=pageNo;$('pTot').textContent='/ '+pdf.numPages;
+  $('eL').disabled=pageNo<=1;$('eR').disabled=pageNo>=pdf.numPages;
+  $('zLbl').textContent=Math.round(scale*100)+'%';
+  if(rtask){try{rtask.cancel()}catch(e){}try{await rtask.promise}catch(e){}rtask=null}
+  const page=await pdf.getPage(pageNo);if(id!==renderId)return;
+  vp=page.getViewport({scale});const cv=$('cv');
+  /* tiniq chiqish: ekran zichligiga (kamida 2x) qarab katta piksel bilan chizamiz */
+  let os=Math.max(window.devicePixelRatio||1,2);
+  while(os>1&&vp.width*os*vp.height*os>36e6)os-=.25;
+  cv.width=Math.floor(vp.width*os);cv.height=Math.floor(vp.height*os);
+  cv.style.width=vp.width+'px';cv.style.height=vp.height+'px';
+  $('ov').innerHTML='';
+  const ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  const task=page.render({canvasContext:ctx,viewport:vp,transform:[os,0,0,os,0,0]});rtask=task;
+  try{await task.promise}catch(e){}if(rtask===task)rtask=null}
+const go=n=>{if(!pdf)return;const m=Math.max(1,Math.min(pdf.numPages,n));if(m===pageNo){$('pNo').value=pageNo;return}
+  pageNo=m;$('view').scrollTop=0;showPage()};
+const setScale=v=>{scale=Math.round(Math.max(.4,Math.min(4,v))*100)/100;showPage()};
+async function fitWidth(){if(!pdf)return;const page=await pdf.getPage(pageNo);
+  setScale(($('view').clientWidth-8)/page.getViewport({scale:1}).width)}
+$('bPdf').onclick=()=>$('fPdf').click();
+$('fPdf').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;fontCache={};pageNo=1;
+    $('rA').value=1;$('rB').value=pdf.numPages;showPage();msg('✓ PDF: '+pdf.numPages+' sahifa')}
+  catch(err){alert("PDF ochilmadi: "+err.message)}};
+$('pPrev').onclick=()=>go(pageNo-1);$('pNext').onclick=()=>go(pageNo+1);
+$('eL').onclick=()=>go(pageNo-1);$('eR').onclick=()=>go(pageNo+1);
+$('pNo').onchange=e=>{go(+e.target.value);e.target.blur()};
+$('zIn').onclick=()=>setScale(scale+.2);$('zOut').onclick=()=>setScale(scale-.2);$('zFit').onclick=fitWidth;
+$('bPage').onclick=()=>addPages(pageNo,pageNo);
+$('bRange').onclick=()=>addPages(+$('rA').value,+$('rB').value);
+$('bRegion').onclick=()=>lastRect?addRegion(lastRect):msg('Avval PDFda maydon belgilang');
+
+const ov=$('ov');let drag=null,box=null;
+function upd(x,y){box.style.cssText=`left:${Math.min(drag.x,x)}px;top:${Math.min(drag.y,y)}px;width:${Math.abs(x-drag.x)}px;height:${Math.abs(y-drag.y)}px`}
+ov.onpointerdown=e=>{if(!pdf)return;ov.setPointerCapture(e.pointerId);const r=ov.getBoundingClientRect();
+  drag={x:e.clientX-r.left,y:e.clientY-r.top};if(box)box.remove();box=document.createElement('div');box.className='box';ov.appendChild(box);upd(drag.x,drag.y)};
+ov.onpointermove=e=>{if(!drag)return;const r=ov.getBoundingClientRect();upd(e.clientX-r.left,e.clientY-r.top)};
+ov.onpointerup=e=>{if(!drag)return;const r=ov.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  const q={x0:Math.min(drag.x,x),y0:Math.min(drag.y,y),x1:Math.max(drag.x,x),y1:Math.max(drag.y,y)};drag=null;
+  if(q.x1-q.x0<8||q.y1-q.y0<8){box.remove();return}
+  lastRect=q;if($('cAuto').checked)addRegion(q)};
+
+/* ---------- belgilangan matn razmeri ---------- */
+let selSave=null;const edOf=n=>{const el=n&&(n.nodeType===1?n:n.parentElement);return el&&el.closest?el.closest('[contenteditable="true"]'):null};
+document.addEventListener('selectionchange',()=>{const s=getSelection();if(!s.rangeCount)return;const r=s.getRangeAt(0);
+  if(!edOf(r.commonAncestorContainer))return;selSave=r.cloneRange();
+  if(document.activeElement!==$('fsz')){const el=r.startContainer.nodeType===1?r.startContainer:r.startContainer.parentElement;
+    if(el)$('fsz').value=Math.round(parseFloat(getComputedStyle(el).fontSize))||15}});
+function applySize(px){px=Math.max(8,Math.min(96,Math.round(+px)));if(!px)return;
+  const r=selSave;if(!r||r.collapsed)return msg('Avval matnni belgilang');
+  const root=edOf(r.commonAncestorContainer);if(!root||!root.isConnected)return msg('Avval matnni belgilang');
+  snap();root.focus();const sel=getSelection();sel.removeAllRanges();sel.addRange(r);
+  document.execCommand('styleWithCSS',false,false);document.execCommand('fontSize',false,'7');
+  const spans=[];root.querySelectorAll('font[size="7"]').forEach(f=>{const sp=document.createElement('span');sp.style.fontSize=px+'px';
+    while(f.firstChild)sp.appendChild(f.firstChild);f.replaceWith(sp);
+    sp.querySelectorAll('[style*="font-size"]').forEach(c=>c.style.removeProperty('font-size'));spans.push(sp)});
+  if(spans.length){const rr=document.createRange();rr.setStartBefore(spans[0]);rr.setEndAfter(spans[spans.length-1]);
+    sel.removeAllRanges();sel.addRange(rr);selSave=rr.cloneRange()}
+  $('fsz').value=px;root.dispatchEvent(new Event('input',{bubbles:true}));saveSoon()}
+const stepSize=d=>applySize((parseFloat($('fsz').value)||15)+d);
+['szApply','szDec','szInc','szReset'].forEach(id=>$(id).onmousedown=e=>e.preventDefault());
+$('szApply').onclick=()=>applySize($('fsz').value);
+$('szDec').onclick=()=>stepSize(-1);$('szInc').onclick=()=>stepSize(1);
+$('szReset').onclick=()=>{const ed=selSave&&edOf(selSave.commonAncestorContainer);
+  if(ed)applySize(Math.round(parseFloat(getComputedStyle(ed).fontSize))||15)};
+$('fsz').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();applySize($('fsz').value)}};
+document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||!e.shiftKey||!edOf(e.target))return;const k=e.key;
+  if(k==='X'||k==='x'){e.preventDefault();document.execCommand('strikeThrough')}
+  else if(k==='>'||k==='.'){e.preventDefault();stepSize(1)}
+  else if(k==='<'||k===','){e.preventDefault();stepSize(-1)}});
+
+/* ---------- shriftlar oynasi ---------- */
+$('bFonts').onclick=async()=>{if(!pdf)return msg('Avval PDF oching');
+  const its=await pageItems(await pdf.getPage(pageNo)),m={};
+  its.forEach(t=>{if(!t.s.trim())return;const o=m[t.fn]=m[t.fn]||{n:0,s:'',b:t.b,i:t.i};o.n+=t.s.length;if(o.s.length<45)o.s+=t.s});
+  const fl=$('fl');fl.innerHTML='';
+  Object.entries(m).sort((a,b)=>b[1].n-a[1].n).forEach(([name,o])=>{
+    const r=document.createElement('div');r.className='fr';
+    r.innerHTML=`<span class="fn"></span><span class="sm"></span><label><input type="checkbox" data-f="b"> <b>B</b></label><label><input type="checkbox" data-f="i"> <i>I</i></label>`;
+    r.querySelector('.fn').textContent=name;r.querySelector('.sm').textContent=o.s.trim();
+    const cb=r.querySelector('[data-f=b]'),ci=r.querySelector('[data-f=i]');cb.checked=o.b;ci.checked=o.i;
+    const sv=()=>{fontOvr[name]={b:cb.checked,i:ci.checked};try{localStorage.setItem('pdf-kitob-fonts',JSON.stringify(fontOvr))}catch(e){}};
+    cb.onchange=sv;ci.onchange=sv;fl.appendChild(r)});
+  if(!fl.children.length)fl.textContent='Bu sahifada matn topilmadi';
+  $('fdlg').showModal()};
+$('fClose').onclick=()=>$('fdlg').close();
+
+/* ---------- PDF tez tugmalari ---------- */
+const typing=t=>t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"]');
+document.addEventListener('keydown',e=>{
+  if(!pdf||e.ctrlKey||e.metaKey)return;const k=e.key;
+  if(e.altKey){ /* yozayotganda ham ishlaydi */
+    if(k==='PageDown'||(e.shiftKey&&k==='ArrowRight')){e.preventDefault();go(pageNo+1)}
+    else if(k==='PageUp'||(e.shiftKey&&k==='ArrowLeft')){e.preventDefault();go(pageNo-1)}
+    return}
+  if(e.shiftKey||typing(e.target))return;
+  if(k==='ArrowRight'||k==='PageDown'){e.preventDefault();go(pageNo+1)}
+  else if(k==='ArrowLeft'||k==='PageUp'){e.preventDefault();go(pageNo-1)}
+  else if(k==='Home'){e.preventDefault();go(1)}
+  else if(k==='End'){e.preventDefault();go(pdf.numPages)}
+  else if(k==='+'||k==='='){e.preventDefault();setScale(scale+.2)}
+  else if(k==='-'||k==='_'){e.preventDefault();setScale(scale-.2)}
+  else if(k==='0'){e.preventDefault();fitWidth()}
+});
+
+/* ---------- JSON viewer (VS Code uslubi) ---------- */
+let jsMode=false,folded=new Set(),jsLines=[],jsRanges={};
+const jsText=()=>$('jsScope').value==='all'?toJson():(tblN=0,JSON.stringify([partObj(P())],null,2));
+function hl(l){return esc(l).replace(/("(?:[^"\\]|\\.)*")(\s*:)?|\b(true|false|null)\b|-?\b\d+(?:\.\d+)?\b/g,(m,str,col,bool)=>{
+  if(str)return col?`<span class="jk">${str}</span>${col}`:`<span class="js">${str}</span>`;
+  if(bool)return`<span class="jb">${m}</span>`;return`<span class="jn">${m}</span>`})}
+function buildJs(){jsLines=jsText().split('\n');jsRanges={};const st=[];
+  jsLines.forEach((l,i)=>{if(/^\s*[}\]],?$/.test(l)){const s=st.pop();if(s!==undefined)jsRanges[s]=i}else if(/[{\[]$/.test(l.trimEnd()))st.push(i)})}
+function renderJs(){const out=[];let i=0;
+  while(i<jsLines.length){const end=jsRanges[i],f=end!==undefined&&folded.has(i);let code=hl(jsLines[i]);
+    if(f)code+=` <span class="fdmark" data-i="${i}">…${esc(jsLines[end].trim())}</span>`;
+    out.push(`<div class="jl"><span class="ln">${i+1}</span><span class="fd" data-i="${i}">${end!==undefined?(f?'▸':'▾'):''}</span><span class="code">${code}</span></div>`);
+    i=f?end+1:i+1}
+  $('jsonView').innerHTML=out.join('')}
+const indentOf=i=>jsLines[i].length-jsLines[i].trimStart().length;
+function foldWhere(min){folded.clear();Object.keys(jsRanges).forEach(k=>{if(+k>0&&indentOf(+k)>=min)folded.add(+k)});renderJs()}
+$('jsonView').onclick=e=>{const t=e.target.closest('[data-i]');if(!t)return;const i=+t.dataset.i;
+  if(jsRanges[i]===undefined)return;folded.has(i)?folded.delete(i):folded.add(i);renderJs()};
+$('jsFoldBlocks').onclick=()=>foldWhere(14);$('jsFoldAll').onclick=()=>foldWhere(1);
+$('jsUnfold').onclick=()=>{folded.clear();renderJs()};
+$('jsRefresh').onclick=()=>{folded.clear();buildJs();renderJs()};
+$('jsScope').onchange=()=>{folded.clear();buildJs();renderJs()};
+$('jsCopy').onclick=()=>copy(jsText());
+function setMode(on){jsMode=on;$('list').hidden=on;$('jsonView').hidden=!on;$('jsTools').hidden=!on;
+  document.querySelectorAll('.edTools').forEach(e=>e.hidden=on);
+  $('tabEd').classList.toggle('pri',!on);$('tabJs').classList.toggle('pri',on);
+  if(on){folded.clear();buildJs();renderJs()}}
+$('tabEd').onclick=()=>setMode(false);$('tabJs').onclick=()=>setMode(true);
+
+/* ---------- sticky balandligi ---------- */
+const hdr=document.querySelector('header'),setHH=()=>document.documentElement.style.setProperty('--hh',hdr.offsetHeight+'px');
+setHH();new ResizeObserver(setHH).observe(hdr);
+
+render();
+</script>
+</body>
+</html>
