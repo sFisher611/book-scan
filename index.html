@@ -39,7 +39,7 @@ body.dragging{cursor:col-resize;user-select:none}body.dragging #ov{pointer-event
 .fd{flex:0 0 18px;color:#c5c5c5;cursor:pointer;user-select:none;text-align:center}
 .jk{color:#9cdcfe}.js{color:#ce9178}.jn{color:#b5cea8}.jb{color:#569cd6}
 .fdmark{color:#9a9a9a;background:#333;border-radius:3px;padding:0 4px;cursor:pointer}
-#view{overflow:auto;max-height:calc(100vh - 290px);min-height:260px;background:var(--bg);border:1px solid var(--ln);border-radius:6px;text-align:center}
+#view{overflow:auto;height:calc(100vh - 290px);min-height:160px;background:var(--bg);border:1px solid var(--ln);border-radius:6px;text-align:center}
 #pg{position:relative;display:inline-block;line-height:0}
 #ov{position:absolute;inset:0;cursor:crosshair;touch-action:none}
 #cv{display:block;image-rendering:auto}
@@ -83,7 +83,12 @@ table.et th:focus,table.et td:focus{outline:2px solid var(--acc);outline-offset:
 button.danger{color:#c0392b;border-color:#c0392b}
 .tg{font-weight:600;white-space:nowrap}
 #pdfPane.cl .pdet,#edPane.cl .edet{display:none}
-#pdfPane.cl #view{max-height:calc(100vh - var(--hh,60px) - 110px)}
+#pdfPane.cl #view{height:calc(100vh - var(--hh,60px) - 110px)}
+#vsplit{height:14px;margin-top:4px;cursor:row-resize;touch-action:none;user-select:none;position:relative;border-radius:6px}
+#vsplit::before{content:'';position:absolute;left:0;right:0;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;background:var(--ln);transition:background .15s}
+#vsplit::after{content:'⋯';position:absolute;left:50%;top:50%;transform:translate(-50%,-52%);padding:0 10px;background:var(--pn);color:var(--mut);font-size:18px;line-height:1}
+#vsplit:hover::before,#vsplit.drag::before{background:var(--acc)}
+body.vdragging{cursor:row-resize;user-select:none}body.vdragging #ov{pointer-events:none}
 #pNav{margin-top:0}
 </style>
 </head>
@@ -106,6 +111,8 @@ button.danger{color:#c0392b;border-color:#c0392b}
     <input type="number" id="pNo" min="1" value="1" style="width:64px"> <span id="pTot">/ 0</span>
     <button id="pNext" title="Keyingi sahifa (→)">▶</button>
     <button id="tgPdf" class="tg" aria-expanded="true" title="PDF sozlamalarini yig'ish / ochish">▾ Sozlamalar</button>
+    <button id="zFill" title="Oynani ekran balandligiga moslash (⇕). Qo'lda: pastdagi ⋯ ajratgichni suring">⇕</button>
+    <button id="zPage" title="Butun sahifani sig'dirish (9)">⛶</button>
   </div>
   <div class="pdet">
   <div class="row">
@@ -131,6 +138,7 @@ button.danger{color:#c0392b;border-color:#c0392b}
     <div id="view"><div id="pg"><canvas id="cv"></canvas><div id="ov"></div></div></div>
     <button class="edge r" id="eR" title="Keyingi sahifa (→)" disabled>›</button>
   </div>
+  <div id="vsplit" role="separator" aria-orientation="horizontal" title="Suring: PDF oynasi balandligini o'zgartirish (ikki marta bosish — ekranga moslash)"></div>
   <p class="hint pdet">PDF sahifasida sichqoncha bilan to'rtburchak chizing — ichidagi matn abzaslarga ajratilib, bold/italic bilan o'ng tomondagi muharrirga tushadi. Oraliq tugmasi butun sahifalarni birdan qo'shadi.<br>
   <b>Tugmalar:</b> <kbd>←</kbd>/<kbd>→</kbd> yoki <kbd>PageUp</kbd>/<kbd>PageDown</kbd> — sahifa, <kbd>Home</kbd>/<kbd>End</kbd> — birinchi/oxirgi, <kbd>+</kbd>/<kbd>−</kbd> — masshtab, <kbd>0</kbd> — kenglikka moslash. <kbd>Ctrl</kbd>+g'ildirak — masshtab. Panellar orasidagi ⋮ chiziqni sichqoncha bilan siljitib, PDF oynasini kengaytirish/toraytirish mumkin (ikki marta bosish — asl holat). Matn yozayotganda: <kbd>Alt</kbd>+<kbd>PageDown</kbd>/<kbd>PageUp</kbd> yoki <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd>.</p>
 </section>
@@ -671,6 +679,31 @@ mkFold('tgPdf','pdfPane','pdf-kitob-fold-pdf');mkFold('tgEd','edPane','pdf-kitob
   sp.onpointerup=end;sp.onpointercancel=end;
   sp.ondblclick=()=>{mn.style.removeProperty('--pw');try{localStorage.removeItem(PW)}catch(e){}if(fitMode)fitWidth()};
   addEventListener('resize',()=>{if(mn.style.getPropertyValue('--pw'))setW(parseFloat(mn.style.getPropertyValue('--pw')))});
+})();
+
+/* PDF oynasi balandligi: ⇕ tugma, pastdagi ajratgich, avtomatik moslash */
+(function(){const v=$('view'),sp=$('vsplit'),VH='pdf-kitob-vh';let manual=false;
+  const maxH=()=>Math.max(160,innerHeight-v.getBoundingClientRect().top-34);
+  const setH=(px,save)=>{px=Math.max(160,Math.min(px,maxH()+400));v.style.height=px+'px';
+    if(save){manual=true;try{localStorage.setItem(VH,String(Math.round(px)))}catch(e){}}};
+  const auto=()=>{manual=false;try{localStorage.removeItem(VH)}catch(e){}v.style.height=maxH()+'px'};
+  window.fillPdfH=()=>{auto();if(fitMode)fitWidth()};
+  try{const x=+localStorage.getItem(VH);if(x){manual=true;v.style.height=x+'px'}}catch(e){}
+  if(!manual)requestAnimationFrame(()=>v.style.height=maxH()+'px');
+  addEventListener('resize',()=>{if(!manual)v.style.height=maxH()+'px'});
+  $('tgPdf').addEventListener('click',()=>{if(!manual)setTimeout(()=>v.style.height=maxH()+'px',30)});
+  $('zFill').onclick=()=>fillPdfH();
+  let sy=0,sh=0;
+  sp.onpointerdown=e=>{sy=e.clientY;sh=v.getBoundingClientRect().height;sp.setPointerCapture(e.pointerId);sp.classList.add('drag');document.body.classList.add('vdragging');e.preventDefault()};
+  sp.onpointermove=e=>{if(!sp.hasPointerCapture(e.pointerId))return;setH(sh+e.clientY-sy,true)};
+  const end=()=>{if(!sp.classList.contains('drag'))return;sp.classList.remove('drag');document.body.classList.remove('vdragging');if(fitMode)fitWidth()};
+  sp.onpointerup=end;sp.onpointercancel=end;sp.ondblclick=()=>fillPdfH();
+  /* butun sahifani sig'dirish */
+  window.fitPage=async()=>{if(!pdf)return;fitMode=false;const pg=await pdf.getPage(pageNo),b=pg.getViewport({scale:1});
+    setScale(Math.min((v.clientWidth-8)/b.width,(v.clientHeight-8)/b.height))};
+  $('zPage').onclick=()=>fitPage();
+  addEventListener('keydown',e=>{if(!pdf||e.ctrlKey||e.metaKey||e.altKey)return;const t=e.target;
+    if(t&&(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable))return;if(e.key==='9'){e.preventDefault();fitPage()}});
 })();
 /* Ctrl + g'ildirak — PDF masshtabi */
 $('view').addEventListener('wheel',e=>{if(!(e.ctrlKey||e.metaKey)||!pdf)return;e.preventDefault();fitMode=false;
