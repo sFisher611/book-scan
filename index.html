@@ -82,6 +82,10 @@ table.et th:focus,table.et td:focus{outline:2px solid var(--acc);outline-offset:
 .al-center .txt{text-align:center}.al-right .txt{text-align:right}
 button.danger{color:#c0392b;border-color:#c0392b}
 .tg{font-weight:600;white-space:nowrap}
+.dd{border-bottom:2px dotted var(--acc);background:var(--acc2);cursor:help}
+#fab{position:fixed;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,.3);background:var(--acc);color:#fff;border-color:var(--acc)}
+#ddlg textarea{width:100%;min-height:110px;font:inherit;color:var(--ink);background:var(--pn);border:1px solid var(--ln);border-radius:6px;padding:6px}
+#dSel{background:var(--acc2);padding:4px 8px;border-radius:6px;margin:0 0 8px;font-weight:600}
 #pdfPane.cl .pdet,#edPane.cl .edet{display:none}
 #pdfPane.cl #view{height:calc(100vh - var(--hh,60px) - 110px)}
 #vsplit{height:14px;margin-top:4px;cursor:row-resize;touch-action:none;user-select:none;position:relative;border-radius:6px}
@@ -160,6 +164,7 @@ body.vdragging{cursor:row-resize;user-select:none}body.vdragging #ov{pointer-eve
       <span class="szg"><label>Razmer <input type="number" id="fsz" list="fszl" min="8" max="96" step="1" value="15" style="width:62px" title="Belgilangan matn razmeri (Enter — qo'llash)"></label>
         <datalist id="fszl"><option>10</option><option>12</option><option>14</option><option>15</option><option>16</option><option>18</option><option>20</option><option>24</option><option>28</option><option>32</option></datalist>
         <button id="szApply" title="Razmerni qo'llash">✓</button><button id="szDec" title="Kichraytirish (Ctrl+Shift+,)">A−</button><button id="szInc" title="Kattalashtirish (Ctrl+Shift+.)">A＋</button><button id="szReset" title="Asl razmerga qaytarish">Asl</button></span>
+      <button id="bDesc" title="Belgilangan so'zga izoh (discription) qo'shish. Izohli so'zni Ctrl+bosish bilan ham tahrirlash mumkin">💬 Izoh</button>
     </div>
     <div class="row" id="jsTools" hidden>
       <select id="jsScope"><option value="cur">Joriy bob</option><option value="all">Hamma boblar</option></select>
@@ -181,7 +186,7 @@ body.vdragging{cursor:row-resize;user-select:none}body.vdragging #ov{pointer-eve
       <div class="row tb edTools"><button data-add="p">＋ Abzas</button><button data-add="img">＋ Rasm</button><button data-add="sep">＋ Σ</button><button data-add="evo">＋ Evolution</button><button data-add="h">＋ Sarlavha</button><button data-add="table">▦ Jadval</button><button data-add="ul">• Ro'yxat</button><button data-add="ol">1. Ro'yxat</button></div>
     </div>
   </div>
-  <p class="hint edTools edet">Enter — abzasni kursor joyidan ikkiga bo'ladi. Abzas boshida Backspace — oldingisiga qo'shadi. Belgilangan matnga B / I / U / <s>S</s> (o'rtasiga chizish) va razmer (A− / A＋ yoki raqam + Enter) qo'llanadi. Matn abzasidagi ⯇/▭/⯈ tugmasi matnni chap/markaz/o'ngga tekislaydi. Bobning "part/subtitle" nomidan volume, chapter, section title/subtitle avtomatik to'ldiriladi — xohlasangiz yuqoridagi maydonlarda o'zgartiring. Bir chapter ichida bir nechta section ochish mumkin (＋ Section).</p>
+  <p class="hint edTools edet">Enter — abzasni kursor joyidan ikkiga bo'ladi. Abzas boshida Backspace — oldingisiga qo'shadi. Belgilangan matnga B / I / U / <s>S</s> (o'rtasiga chizish) va razmer (A− / A＋ yoki raqam + Enter) qo'llanadi. <b>Izoh:</b> so'zni belgilab 💬 Izoh tugmasini bosing — JSON'ga <code>discription</code> maydoni bilan tushadi; izohli so'zni <kbd>Ctrl</kbd>+bosib tahrirlash mumkin. Matn abzasidagi ⯇/▭/⯈ tugmasi matnni chap/markaz/o'ngga tekislaydi. Bobning "part/subtitle" nomidan volume, chapter, section title/subtitle avtomatik to'ldiriladi — xohlasangiz yuqoridagi maydonlarda o'zgartiring. Bir chapter ichida bir nechta section ochish mumkin (＋ Section).</p>
   <div id="list"></div>
   <div id="jsonView" hidden></div>
 </section>
@@ -189,6 +194,13 @@ body.vdragging{cursor:row-resize;user-select:none}body.vdragging #ov{pointer-eve
 <dialog id="fdlg"><h3 style="margin:0 0 6px">Sahifadagi shriftlar</h3>
 <p class="hint" style="margin:0 0 8px">Qaysi shrift qalin (B) yoki kursiv (I) ekanini belgilang — saqlanadi va keyingi belgilashlarda ishlatiladi.</p>
 <div id="fl"></div><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="pri" id="fClose">Tayyor</button></div></dialog>
+<dialog id="ddlg"><h3 style="margin:0 0 6px">Izoh (discription)</h3>
+<div id="dSel"></div>
+<textarea id="dTxt" placeholder="Izoh matnini yozing..."></textarea>
+<div class="row" style="justify-content:flex-end;margin-top:10px">
+<button class="danger" id="dRm">Izohni o'chirish</button><button id="dCancel">Bekor</button><button class="pri" id="dSave">Saqlash</button></div>
+<p class="hint">Ctrl+Enter — saqlash</p></dialog>
+<button id="fab" hidden>💬 Izoh</button>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -218,8 +230,8 @@ fix();
 
 /* ---------- run helpers ---------- */
 function norm(rs){const o=[];for(const r of rs){if(!r.t)continue;const l=o[o.length-1];
-  if(l&&!!l.b===!!r.b&&!!l.i===!!r.i&&!!l.u===!!r.u&&!!l.st===!!r.st&&(l.fs||0)===(r.fs||0))l.t+=r.t;
-  else o.push({t:r.t,b:!!r.b,i:!!r.i,u:!!r.u,st:!!r.st,fs:r.fs||0})}return o}
+  if(l&&!!l.b===!!r.b&&!!l.i===!!r.i&&!!l.u===!!r.u&&!!l.st===!!r.st&&(l.fs||0)===(r.fs||0)&&(l.d||'')===(r.d||''))l.t+=r.t;
+  else o.push({t:r.t,b:!!r.b,i:!!r.i,u:!!r.u,st:!!r.st,fs:r.fs||0,d:r.d||''})}return o}
 function tidy(rs){rs=norm(rs.map(r=>({...r,t:r.t.replace(/\s+/g,' ')})));
   if(rs.length){rs[0].t=rs[0].t.trimStart();rs[rs.length-1].t=rs[rs.length-1].t.trimEnd()}return rs.filter(r=>r.t)}
 function joinRuns(a,b){a=a.map(r=>({...r}));b=b.map(r=>({...r}));if(!a.length)return b;if(!b.length)return a;
@@ -229,13 +241,15 @@ function joinRuns(a,b){a=a.map(r=>({...r}));b=b.map(r=>({...r}));if(!a.length)re
   return norm(a.concat(b))}
 const plain=p=>p.runs.map(r=>r.t).join('');
 function runsHtml(rs){return rs.map(r=>{let h=esc(r.t);if(r.st)h='<s>'+h+'</s>';if(r.u)h='<u>'+h+'</u>';if(r.i)h='<i>'+h+'</i>';if(r.b)h='<b>'+h+'</b>';
-  if(r.fs)h='<span style="font-size:'+r.fs+'px">'+h+'</span>';return h}).join('')}
+  if(r.fs)h='<span style="font-size:'+r.fs+'px">'+h+'</span>';
+  if(r.d){const a=esc(r.d).replace(/"/g,'&quot;');h='<span class="dd" data-d="'+a+'" title="'+a+'">'+h+'</span>'}
+  return h}).join('')}
 function domRuns(el){const out=[];
   const def=el.isConnected?parseFloat(getComputedStyle(el).fontSize):NaN;
   function push(t,s){if(!t)return;t=t.replace(/\u00a0/g,' ').replace(/\n/g,' ');
-    const l=out[out.length-1],fs=s.fs||0;
-    if(l&&!!l.b===!!s.b&&!!l.i===!!s.i&&!!l.u===!!s.u&&!!l.st===!!s.st&&(l.fs||0)===fs)l.t+=t;
-    else out.push({t,b:!!s.b,i:!!s.i,u:!!s.u,st:!!s.st,fs})}
+    const l=out[out.length-1],fs=s.fs||0,d=s.d||'';
+    if(l&&!!l.b===!!s.b&&!!l.i===!!s.i&&!!l.u===!!s.u&&!!l.st===!!s.st&&(l.fs||0)===fs&&(l.d||'')===d)l.t+=t;
+    else out.push({t,b:!!s.b,i:!!s.i,u:!!s.u,st:!!s.st,fs,d})}
   (function w(n,st){
     if(n.nodeType===3)return push(n.textContent,st);
     if(n.nodeType!==1)return;
@@ -245,6 +259,7 @@ function domRuns(el){const out=[];
     if(t==='I'||t==='EM'||n.style.fontStyle==='italic')s.i=true;
     if(t==='U'||/underline/.test(td))s.u=true;
     if(t==='S'||t==='STRIKE'||t==='DEL'||/line-through/.test(td))s.st=true;
+    if(n.hasAttribute('data-d'))s.d=n.getAttribute('data-d');
     const f=parseFloat(n.style.fontSize);
     if(f>0)s.fs=Math.abs(f-def)<.4?0:Math.round(f*2)/2;
     n.childNodes.forEach(c=>w(c,s))})(el,{});
@@ -253,7 +268,7 @@ function domRuns(el){const out=[];
 /* ---------- export / import ---------- */
 let tblN=0;
 const deco=(r,force)=>[r.u?'underline':'',(force||r.st)?'line-through':''].filter(Boolean).join(' ');
-const runObj=r=>{const o={text:r.t};if(r.b)o.font_weight='bold';if(r.i)o.font_style='italic';const d=deco(r);if(d)o.text_decoration=d;if(r.fs)o.font_size=String(r.fs);return o};
+const runObj=r=>{const o={text:r.t};if(r.d)o.discription=r.d;if(r.b)o.font_weight='bold';if(r.i)o.font_style='italic';const d=deco(r);if(d)o.text_decoration=d;if(r.fs)o.font_size=String(r.fs);return o};
 const cellObj=(runs,al)=>{const o={type:'text'};if(al)o.align=al;o.content=runs.filter(r=>r.t).map(runObj);return o};
 function parasToBlocks(paras){const out=[];const nl=()=>out.push({type:'text',content:'\n'});
   paras.forEach((p,idx)=>{
@@ -262,7 +277,7 @@ function parasToBlocks(paras){const out=[];const nl=()=>out.push({type:'text',co
     else if(p.k==='sep')out.push({type:'line',content:'Σ'});
     else if(p.k==='table')out.push({type:'table',id:'table_'+(++tblN),headers:p.headers.map(c=>cellObj(c.runs,c.align||'left')),rows:p.rows.map(r=>r.map(c=>cellObj(c.runs)))});
     else if(p.k==='ul'||p.k==='ol')out.push({type:'list',ordered:p.k==='ol',items:(p.items||[]).map(it=>cellObj(it))});
-    else p.runs.forEach(r=>{if(!r.t)return;const o={type:'text',content:r.t},big=p.k==='evo'||p.k==='h';
+    else p.runs.forEach(r=>{if(!r.t)return;const o={type:'text',content:r.t},big=p.k==='evo'||p.k==='h';if(r.d)o.discription=r.d;
       const d=(p.k==='cap'||p.k==='evo')?'line-through':deco(r);if(d)o.text_decoration=d;
       if(r.b||big)o.font_weight='bold';if(r.i)o.font_style='italic';if(r.fs)o.font_size=String(r.fs);else if(big)o.font_size='18';if(p.al)o.text_align=p.al;out.push(o)})});
   return out}
@@ -274,8 +289,8 @@ const toDart=()=>'final List<Map<String, dynamic>> bookPartData = '+toJson().rep
 function finish(c){const all=f=>c.runs.every(r=>r[f]);let k='p';
   if(all('s')&&all('b')&&all('z'))k='evo';else if(all('b')&&all('z'))k='h';else if(all('s'))k='cap';
   const big=k==='h'||k==='evo';
-  return{k,al:c.al,runs:norm(c.runs.map(r=>({t:r.t,b:(k==='p'||k==='cap')?r.b:false,i:r.i,u:r.u,st:k==='p'?r.s:false,fs:(big&&r.fs===18)?0:r.fs})))}}
-const cr=c=>norm((Array.isArray(c.content)?c.content:[{text:c.content||''}]).map(x=>({t:x.text||'',b:x.font_weight==='bold',i:x.font_style==='italic',u:/underline/.test(x.text_decoration||''),st:/line-through/.test(x.text_decoration||''),fs:parseFloat(x.font_size)||0})));
+  return{k,al:c.al,runs:norm(c.runs.map(r=>({t:r.t,b:(k==='p'||k==='cap')?r.b:false,i:r.i,u:r.u,st:k==='p'?r.s:false,fs:(big&&r.fs===18)?0:r.fs,d:r.d})))}}
+const cr=c=>norm((Array.isArray(c.content)?c.content:[{text:c.content||''}]).map(x=>({t:x.text||'',b:x.font_weight==='bold',i:x.font_style==='italic',u:/underline/.test(x.text_decoration||''),st:/line-through/.test(x.text_decoration||''),fs:parseFloat(x.font_size)||0,d:x.discription||''})));
 function blocksToParas(bl){const out=[];let c=null;const flush=()=>{if(c&&c.runs.length)out.push(finish(c));c=null};
   bl.forEach(b=>{
     if(b.type==='image'){flush();out.push({k:'img',img:b.content,runs:[]})}
@@ -283,7 +298,7 @@ function blocksToParas(bl){const out=[];let c=null;const flush=()=>{if(c&&c.runs
     else if(b.type==='table'){flush();out.push({k:'table',runs:[],headers:(b.headers||[]).map(h=>({runs:cr(h),align:h.align||'left'})),rows:(b.rows||[]).map(r=>r.map(c=>({runs:cr(c)})))})}
     else if(b.type==='list'){flush();out.push({k:b.ordered?'ol':'ul',runs:[],items:(b.items||[]).map(cr)})}
     else if(b.content==='\n')flush();
-    else if(b.content){c=c||{runs:[],al:b.text_align};c.runs.push({t:b.content,b:b.font_weight==='bold',i:b.font_style==='italic',u:/underline/.test(b.text_decoration||''),s:/line-through/.test(b.text_decoration||''),z:!!b.font_size,fs:parseFloat(b.font_size)||0})}});
+    else if(b.content){c=c||{runs:[],al:b.text_align};c.runs.push({t:b.content,b:b.font_weight==='bold',i:b.font_style==='italic',u:/underline/.test(b.text_decoration||''),s:/line-through/.test(b.text_decoration||''),z:!!b.font_size,fs:parseFloat(b.font_size)||0,d:b.discription||''})}});
   flush();return out}
 function parseBook(txt){const a=txt.indexOf('['),b=txt.lastIndexOf(']');
   const t=txt.slice(a,b+1).replace(/\\\$/g,()=>'$').replace(/,(\s*[}\]])/g,'$1');
@@ -586,6 +601,42 @@ document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||!e.shiftKey|
   if(k==='X'||k==='x'){e.preventDefault();document.execCommand('strikeThrough')}
   else if(k==='>'||k==='.'){e.preventDefault();stepSize(1)}
   else if(k==='<'||k===','){e.preventDefault();stepSize(-1)}});
+
+/* ---------- so'zga izoh (discription) ---------- */
+let ddCtx=null;
+const ddFind=r=>{const n=r.commonAncestorContainer,el=n.nodeType===1?n:n.parentElement;return el&&el.closest?el.closest('span[data-d]'):null};
+const ddUnwrap=el=>{while(el.firstChild)el.parentNode.insertBefore(el.firstChild,el);el.remove()};
+function openDesc(){const r=selSave;if(!r)return msg('Avval so\'zni belgilang');
+  const root=edOf(r.commonAncestorContainer);if(!root||!root.isConnected)return msg('Avval so\'zni belgilang');
+  const ex=ddFind(r);if(!ex&&r.collapsed)return msg('Avval so\'zni belgilang');
+  ddCtx={r:r.cloneRange(),root,ex};$('fab').hidden=true;
+  $('dSel').textContent=ex?ex.textContent:r.toString();$('dTxt').value=ex?ex.getAttribute('data-d'):'';
+  $('dRm').hidden=!ex;$('ddlg').showModal();$('dTxt').focus()}
+function saveDesc(v){const{r,root,ex}=ddCtx;v=v.trim();$('ddlg').close();snap();
+  if(ex){if(v){ex.setAttribute('data-d',v);ex.title=v}else ddUnwrap(ex)}
+  else if(v){root.focus();const sel=getSelection();sel.removeAllRanges();sel.addRange(r);
+    document.execCommand('styleWithCSS',false,false);document.execCommand('fontSize',false,'6');
+    root.querySelectorAll('font[size="6"]').forEach(f=>{const sp=document.createElement('span');sp.className='dd';sp.setAttribute('data-d',v);sp.title=v;
+      while(f.firstChild)sp.appendChild(f.firstChild);f.replaceWith(sp);sp.querySelectorAll('span[data-d]').forEach(ddUnwrap)})}
+  root.dispatchEvent(new Event('input',{bubbles:true}));saveSoon();ddCtx=null}
+$('bDesc').onmousedown=e=>e.preventDefault();$('bDesc').onclick=openDesc;
+$('fab').onmousedown=e=>e.preventDefault();$('fab').onclick=openDesc;
+$('dSave').onclick=()=>saveDesc($('dTxt').value);
+$('dRm').onclick=()=>saveDesc('');
+$('dCancel').onclick=()=>{$('ddlg').close();ddCtx=null};
+$('dTxt').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();saveDesc($('dTxt').value)}};
+/* Ctrl+bosish — izohli so'zni tahrirlash */
+document.addEventListener('click',e=>{if(!(e.ctrlKey||e.metaKey))return;const sp=e.target.closest&&e.target.closest('span.dd');if(!sp)return;
+  e.preventDefault();const r=document.createRange();r.selectNodeContents(sp);selSave=r;openDesc()});
+/* belgilanganda suzuvchi tugma */
+document.addEventListener('selectionchange',()=>{const fab=$('fab');if($('ddlg').open)return;const s=getSelection();
+  if(!s.rangeCount){fab.hidden=true;return}const r=s.getRangeAt(0);
+  if(!edOf(r.commonAncestorContainer)){fab.hidden=true;return}
+  const ex=ddFind(r);if(r.collapsed&&!ex){fab.hidden=true;return}
+  const rc=(ex&&r.collapsed?ex:r).getBoundingClientRect();if(!rc.width&&!rc.height){fab.hidden=true;return}
+  fab.textContent=ex?'✎ Izohni tahrirlash':'💬 Izoh';fab.hidden=false;
+  fab.style.left=Math.max(4,Math.min(rc.left,innerWidth-fab.offsetWidth-8))+'px';
+  fab.style.top=Math.max(4,rc.top-fab.offsetHeight-6)+'px'});
 
 /* ---------- shriftlar oynasi ---------- */
 $('bFonts').onclick=async()=>{if(!pdf)return msg('Avval PDF oching');
