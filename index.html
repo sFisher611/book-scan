@@ -612,7 +612,9 @@ function openDesc(){const r=selSave;if(!r)return msg('Avval so\'zni belgilang');
   ddCtx={r:r.cloneRange(),root,ex};$('fab').hidden=true;
   $('dSel').textContent=ex?ex.textContent:r.toString();$('dTxt').value=ex?ex.getAttribute('data-d'):'';
   $('dRm').hidden=!ex;$('ddlg').showModal();$('dTxt').focus()}
-function saveDesc(v){const{r,root,ex}=ddCtx;v=v.trim();$('ddlg').close();snap();
+const oneLine=s=>s.replace(/(\p{L})-\s*[\r\n]+\s*(\p{Ll})/gu,'$1$2').replace(/\s*[\r\n]+\s*/g,' ').replace(/[ \t]{2,}/g,' ').trim();
+$('dTxt').addEventListener('paste',e=>{e.preventDefault();document.execCommand('insertText',false,oneLine(e.clipboardData.getData('text/plain')||''))});
+function saveDesc(v){const{r,root,ex}=ddCtx;v=oneLine(v);$('ddlg').close();snap();
   if(ex){if(v){ex.setAttribute('data-d',v);ex.title=v}else ddUnwrap(ex)}
   else if(v){root.focus();const sel=getSelection();sel.removeAllRanges();sel.addRange(r);
     document.execCommand('styleWithCSS',false,false);document.execCommand('fontSize',false,'6');
